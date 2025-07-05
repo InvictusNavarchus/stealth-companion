@@ -144,23 +144,49 @@ async function storeMessage(ctx) {
 	if (repliedData && repliedData.viewOnceImagePath) {
 		const messages = await loadMessages();
 		
-		// Create message object for view once messages only
+		// Create streamlined message object focused on view once data
 		const messageData = {
+			// Main message metadata
 			chatId: ctx.chatId,
-			roomId: ctx.roomId,
-			senderId: ctx.senderId,
-			roomName: ctx.roomName,
-			senderName: ctx.senderName,
-			text: ctx.text,
 			timestamp: new Date().toISOString(),
-			chatType: ctx.chatType,
-			isGroup: ctx.isGroup,
-			isStory: ctx.isStory,
-			isEdited: ctx.isEdited,
-			isForwarded: ctx.isForwarded,
-			imagePath: null,
+			text: ctx.text,
+			
+			// View once image info
 			viewOnceImagePath: repliedData.viewOnceImagePath,
-			repliedMessage: repliedData
+			
+			// Replied message data (the view once content)
+			viewOnceMessage: {
+				chatId: ctx.replied.chatId,
+				channelId: ctx.replied.channelId,
+				uniqueId: ctx.replied.uniqueId,
+				roomId: ctx.replied.roomId,
+				roomName: ctx.replied.roomName,
+				senderId: ctx.replied.senderId,
+				senderName: ctx.replied.senderName,
+				senderDevice: ctx.replied.senderDevice,
+				timestamp: ctx.replied.timestamp,
+				text: ctx.replied.text,
+				isFromMe: ctx.replied.isFromMe,
+				isViewOnce: ctx.replied.isViewOnce,
+				
+				// Media metadata
+				media: {
+					mimetype: ctx.replied.media.mimetype,
+					caption: ctx.replied.media.caption,
+					height: ctx.replied.media.height,
+					width: ctx.replied.media.width,
+					viewOnce: ctx.replied.media.viewOnce
+				}
+			},
+			
+			// Context of the reply message (who replied to the view once)
+			replyContext: {
+				roomId: ctx.roomId,
+				roomName: ctx.roomName,
+				senderId: ctx.senderId,
+				senderName: ctx.senderName,
+				isGroup: ctx.isGroup
+			}
 		};
 		
 		// Add message to array and save
