@@ -106,7 +106,7 @@ async function handleRepliedMessage(ctx) {
 				const fileExtension = ctx.replied.media.mimetype?.split("/")[1] || "jpg";
 				
 				// Save to viewonce folder if it's a view once message, otherwise to regular images folder
-				if (ctx.replied.chatType === "viewOnce") {
+				if (ctx.replied.isViewOnce || ctx.replied.media.viewOnce) {
 					const viewOncePath = await saveViewOnceImage(imageBuffer, ctx.replied.chatId, fileExtension);
 					repliedData.viewOnceImagePath = viewOncePath;
 					console.log(`🕵️ View once image extracted and saved: ${viewOncePath}`);
