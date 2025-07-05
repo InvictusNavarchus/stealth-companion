@@ -74,6 +74,17 @@ async function saveViewOnceImage(imageBuffer, chatId, fileExtension = "jpg") {
 }
 
 /**
+ * Detects if a message contains view once content in replied messages
+ * @param {Object} ctx - The message context from Zaileys
+ * @returns {boolean} True if view once content is detected, false otherwise
+ */
+function detectViewOnceContent(ctx) {
+	return ctx.replied && 
+		   ctx.replied.media && 
+		   (ctx.replied.isViewOnce || ctx.replied.media.viewOnce);
+}
+
+/**
  * Handles media extraction from replied messages
  * @param {Object} ctx - The message context from Zaileys
  * @returns {Promise<Object|null>} Object containing paths to saved media and replied message data, or null if not applicable
@@ -157,8 +168,10 @@ async function storeMessage(ctx) {
 }
 
 wa.on("messages", async (ctx) => {
-    // Store the message
-    await storeMessage(ctx);
+    // Only process and store messages if they contain view once content
+    if (detectViewOnceContent(ctx)) {
+        await storeMessage(ctx);
+    }
     
 	if (ctx.text === "test") {
 		await wa.text("Hello!", { roomId: ctx.roomId });
