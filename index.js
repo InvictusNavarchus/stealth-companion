@@ -12,7 +12,7 @@ async function main() {
 	botLogger.startup("Initializing Stealth Companion WhatsApp Bot", {
 		authType: CLIENT_CONFIG.authType,
 		database: CLIENT_CONFIG.database.type,
-		features: ["autoRead", "autoOnline", "autoPresence", "autoRejectCall"]
+		features: ["autoOnline", "autoPresence"]
 	});
 
 	// Create WhatsApp client
