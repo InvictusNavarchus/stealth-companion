@@ -112,8 +112,6 @@ export async function handleMessage(ctx, client) {
 	
 	// Handle test command
 	if (ctx.text === "test") {
-		botLogger.info("Test command received, sending response", { roomId: ctx.roomId });
-		await client.text("Hello!", { roomId: ctx.roomId });
-		botLogger.messageSent("Test response sent", { roomId: ctx.roomId });
+		botLogger.info("Test command received. No response is given under stealth mode");
 	}
 }
