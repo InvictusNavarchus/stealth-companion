@@ -55,12 +55,26 @@ const logger = winston.createLogger({
                 winston.format.json()
             )
         }),
-        // File transport for all logs
+        // File transport for all logs (JSON format)
         new winston.transports.File({
             filename: './logs/combined.log',
             format: winston.format.combine(
                 winston.format.timestamp(),
                 winston.format.json()
+            )
+        }),
+        // File transport for readable logs (human-friendly format)
+        new winston.transports.File({
+            filename: './logs/readable.log',
+            format: winston.format.combine(
+                winston.format.timestamp({
+                    format: 'YYYY-MM-DD HH:mm:ss'
+                }),
+                winston.format.printf(({ timestamp, level, message, ...meta }) => {
+                    const emoji = getEmojiForLevel(level);
+                    const metaStr = Object.keys(meta).length ? `\n    ${JSON.stringify(meta, null, 2).split('\n').join('\n    ')}` : '';
+                    return `${emoji} [${timestamp}] ${level.toUpperCase()}: ${message}${metaStr}`;
+                })
             )
         })
     ]
