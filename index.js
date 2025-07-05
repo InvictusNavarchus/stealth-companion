@@ -3,6 +3,13 @@ import fs from "fs/promises";
 import path from "path";
 import { botLogger } from "./logger.js";
 
+// Reconnection configuration
+const RECONNECT_CONFIG = {
+	maxRetries: 10,
+	retryDelay: 30000, // 30 seconds
+	currentRetries: 0
+};
+
 // default configuration
 const wa = new Client({
 	authType: "qr",
@@ -296,45 +303,116 @@ async function storeMessage(ctx) {
 	}
 }
 
-wa.on("messages", async (ctx) => {
-    botLogger.messageReceived("Message received", {
-        chatId: ctx.chatId,
-        roomId: ctx.roomId,
-        roomName: ctx.roomName,
-        senderName: ctx.senderName,
-        isGroup: ctx.isGroup,
-        hasReplied: !!ctx.replied,
-        text: ctx.text ? ctx.text.substring(0, 50) + (ctx.text.length > 50 ? '...' : '') : 'No text'
-    });
-
-    // Only process and store messages if they contain view once content
-    if (detectViewOnceContent(ctx)) {
-        await storeMessage(ctx);
-    }
-    
-	if (ctx.text === "test") {
-        botLogger.info("Test command received, sending response", { roomId: ctx.roomId });
-		await wa.text("Hello!", { roomId: ctx.roomId });
-        botLogger.messageSent("Test response sent", { roomId: ctx.roomId });
+/**
+ * Attempts to reconnect to WhatsApp with retry logic
+ * @returns {Promise<void>}
+ */
+async function attemptReconnection() {
+	if (RECONNECT_CONFIG.currentRetries >= RECONNECT_CONFIG.maxRetries) {
+		botLogger.error("Maximum reconnection attempts reached", {
+			maxRetries: RECONNECT_CONFIG.maxRetries,
+			totalAttempts: RECONNECT_CONFIG.currentRetries
+		});
+		return;
 	}
-});
 
-// Add connection event listener
-wa.on("connection", (ctx) => {
-    switch (ctx.status) {
-        case 'connecting':
-            botLogger.connection("Connecting to WhatsApp...");
-            break;
-        case 'open':
-            botLogger.success("Successfully connected to WhatsApp!");
-            break;
-        case 'close':
-            botLogger.warning("WhatsApp connection closed");
-            break;
-        default:
-            botLogger.connection(`Connection status: ${ctx.status}`);
-    }
-});
+	RECONNECT_CONFIG.currentRetries++;
+	
+	botLogger.warning(`Attempting reconnection ${RECONNECT_CONFIG.currentRetries}/${RECONNECT_CONFIG.maxRetries}`, {
+		retryDelay: `${RECONNECT_CONFIG.retryDelay / 1000}s`,
+		attempt: RECONNECT_CONFIG.currentRetries
+	});
+
+	try {
+		// Wait for the specified delay before attempting reconnection
+		await new Promise(resolve => setTimeout(resolve, RECONNECT_CONFIG.retryDelay));
+		
+		// Create new client instance for reconnection
+		const newWa = new Client({
+			authType: "qr",
+			prefix: "/",
+			ignoreMe: false,
+			showLogs: true,
+			autoRead: true,
+			autoOnline: true,
+			autoPresence: true,
+			autoRejectCall: true,
+			loadLLMSchemas: false,
+			database: {
+				type: "sqlite",
+				connection: { url: "./session/zaileys.db" },
+			},
+		});
+
+		// Re-setup event listeners for the new client
+		setupEventListeners(newWa);
+		
+		botLogger.info("Reconnection attempt initiated", {
+			attempt: RECONNECT_CONFIG.currentRetries,
+			remaining: RECONNECT_CONFIG.maxRetries - RECONNECT_CONFIG.currentRetries
+		});
+
+	} catch (error) {
+		botLogger.error("Reconnection attempt failed", {
+			error: error.message,
+			attempt: RECONNECT_CONFIG.currentRetries,
+			stack: error.stack
+		});
+		
+		// Attempt another reconnection
+		await attemptReconnection();
+	}
+}
+
+/**
+ * Sets up event listeners for the WhatsApp client
+ * @param {Client} client - The WhatsApp client instance
+ */
+function setupEventListeners(client) {
+	client.on("messages", async (ctx) => {
+		botLogger.messageReceived("Message received", {
+			chatId: ctx.chatId,
+			roomId: ctx.roomId,
+			roomName: ctx.roomName,
+			senderName: ctx.senderName,
+			isGroup: ctx.isGroup,
+			hasReplied: !!ctx.replied,
+			text: ctx.text ? ctx.text.substring(0, 50) + (ctx.text.length > 50 ? '...' : '') : 'No text'
+		});
+
+		// Only process and store messages if they contain view once content
+		if (detectViewOnceContent(ctx)) {
+			await storeMessage(ctx);
+		}
+		
+		if (ctx.text === "test") {
+			botLogger.info("Test command received, sending response", { roomId: ctx.roomId });
+			await client.text("Hello!", { roomId: ctx.roomId });
+			botLogger.messageSent("Test response sent", { roomId: ctx.roomId });
+		}
+	});
+
+	// Add connection event listener with reconnection logic
+	client.on("connection", async (ctx) => {
+		switch (ctx.status) {
+			case 'connecting':
+				botLogger.connection("Connecting to WhatsApp...");
+				break;
+			case 'open':
+				botLogger.success("Successfully connected to WhatsApp!");
+				// Reset retry counter on successful connection
+				RECONNECT_CONFIG.currentRetries = 0;
+				break;
+			case 'close':
+				botLogger.warning("WhatsApp connection closed");
+				// Attempt reconnection after connection closes
+				await attemptReconnection();
+				break;
+			default:
+				botLogger.connection(`Connection status: ${ctx.status}`);
+		}
+	});
+}
 
 // Handle process termination gracefully
 process.on('SIGINT', () => {
@@ -355,5 +433,8 @@ process.on('uncaughtException', (error) => {
 process.on('unhandledRejection', (reason, promise) => {
     botLogger.error("Unhandled promise rejection", { reason, promise });
 });
+
+// Setup initial event listeners
+setupEventListeners(wa);
 
 botLogger.startup("Stealth Companion bot started and ready for messages");
