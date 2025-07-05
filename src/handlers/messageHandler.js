@@ -102,7 +102,7 @@ export async function handleMessage(ctx, client) {
 		senderName: ctx.senderName,
 		isGroup: ctx.isGroup,
 		hasReplied: !!ctx.replied,
-		text: ctx.text ? ctx.text.substring(0, 50) + (ctx.text.length > 50 ? '...' : '') : 'No text'
+		text: ctx.text || 'No text'
 	});
 
 	// Only process and store messages if they contain view once content
