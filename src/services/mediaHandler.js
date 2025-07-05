@@ -59,3 +59,95 @@ export async function saveViewOnceImage(imageBuffer, chatId, fileExtension = "jp
 		throw error;
 	}
 }
+
+/**
+ * Saves story media buffer to the stories folder
+ * @param {Buffer} mediaBuffer - The media data
+ * @param {string} senderId - The sender ID for filename
+ * @param {string} fileExtension - The file extension (jpg, png, mp4, etc.)
+ * @param {string} mediaType - The media type (image, video, audio, etc.)
+ * @returns {Promise<string>} The relative path to the saved story media
+ */
+export async function saveStoryMedia(mediaBuffer, senderId, fileExtension = "jpg", mediaType = "image") {
+	try {
+		const timestamp = Date.now();
+		const filename = `story_${senderId}_${timestamp}.${fileExtension}`;
+		const mediaPath = path.join("./data/stories", filename);
+		
+		botLogger.mediaProcessing(`Saving story ${mediaType}`, { 
+			senderId, 
+			filename, 
+			size: `${(mediaBuffer.length / 1024).toFixed(2)}KB`,
+			extension: fileExtension,
+			mediaType
+		});
+		
+		await fs.writeFile(mediaPath, mediaBuffer);
+		botLogger.mediaSaved(`Story ${mediaType} saved successfully`, { path: mediaPath });
+		return `./data/stories/${filename}`;
+	} catch (error) {
+		botLogger.error(`Failed to save story ${mediaType}`, { 
+			error: error.message, 
+			senderId, 
+			extension: fileExtension,
+			mediaType 
+		});
+		throw error;
+	}
+}
+
+/**
+ * Determines file extension from media type and mimetype
+ * @param {string} chatType - The chat type from context (image, video, audio, etc.)
+ * @param {string} mimetype - The mimetype of the media
+ * @returns {string} The appropriate file extension
+ */
+export function getMediaFileExtension(chatType, mimetype) {
+	try {
+		// Extract extension from mimetype if available
+		if (mimetype) {
+			const mimeExtensionMap = {
+				'image/jpeg': 'jpg',
+				'image/jpg': 'jpg',
+				'image/png': 'png',
+				'image/gif': 'gif',
+				'image/webp': 'webp',
+				'video/mp4': 'mp4',
+				'video/avi': 'avi',
+				'video/mov': 'mov',
+				'audio/mpeg': 'mp3',
+				'audio/mp4': 'm4a',
+				'audio/ogg': 'ogg',
+				'audio/wav': 'wav'
+			};
+			
+			if (mimeExtensionMap[mimetype]) {
+				return mimeExtensionMap[mimetype];
+			}
+			
+			// Fallback: try to extract from mimetype string
+			const parts = mimetype.split('/');
+			if (parts.length === 2) {
+				return parts[1];
+			}
+		}
+		
+		// Fallback based on chatType
+		const typeExtensionMap = {
+			'image': 'jpg',
+			'video': 'mp4',
+			'audio': 'mp3',
+			'voice': 'ogg',
+			'document': 'pdf'
+		};
+		
+		return typeExtensionMap[chatType] || 'bin';
+	} catch (error) {
+		botLogger.error("Error determining file extension", {
+			error: error.message,
+			chatType,
+			mimetype
+		});
+		return 'bin';
+	}
+}

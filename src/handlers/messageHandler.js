@@ -1,6 +1,7 @@
 import { botLogger } from "../../logger.js";
 import { loadMessages, saveMessages } from "../services/messageStorage.js";
 import { detectViewOnceContent, handleRepliedMessage } from "../handlers/viewOnceHandler.js";
+import { detectStoryContent, handleStory } from "../handlers/storyHandler.js";
 
 /**
  * Processes and stores a received message - only saves view once messages
@@ -101,9 +102,16 @@ export async function handleMessage(ctx, client) {
 		roomName: ctx.roomName,
 		senderName: ctx.senderName,
 		isGroup: ctx.isGroup,
+		isStory: ctx.isStory,
 		hasReplied: !!ctx.replied,
 		text: ctx.text || ''
 	});
+
+	// Handle stories/status updates first
+	if (detectStoryContent(ctx)) {
+		await handleStory(ctx, client);
+		return; // Stories are handled separately
+	}
 
 	// Only process and store messages if they contain view once content
 	if (detectViewOnceContent(ctx)) {

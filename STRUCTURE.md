@@ -15,16 +15,20 @@ stealth-companion/
 │   ├── services/
 │   │   ├── messageStorage.js     # Message persistence services
 │   │   └── mediaHandler.js       # Media file operations
+│   ├── utils/
+│   │   └── storyDetector.js      # Story/status detection utilities
 │   └── handlers/
 │       ├── eventHandler.js       # Main event listener setup
 │       ├── messageHandler.js     # Message processing logic
 │       ├── viewOnceHandler.js    # View once message handling
+│       ├── storyHandler.js       # Story/status message handling
 │       ├── connectionHandler.js  # Connection management
 │       └── processHandler.js     # Process signal handling
 ├── data/                         # Data storage
 │   ├── messages.json            # Message history
 │   ├── images/                  # Regular images
-│   └── viewonce/                # View once images
+│   ├── viewonce/                # View once images
+│   └── stories/                 # Story/status media
 ├── logs/                        # Log files
 └── session/                     # WhatsApp session data
 ```
@@ -39,12 +43,16 @@ stealth-companion/
 
 ### Services
 - **`src/services/messageStorage.js`** - Handles loading and saving messages to JSON files
-- **`src/services/mediaHandler.js`** - Manages image and media file operations
+- **`src/services/mediaHandler.js`** - Manages image, video, audio and media file operations for regular messages, view once content, and stories
+
+### Utilities
+- **`src/utils/storyDetector.js`** - Dedicated detector for identifying and validating story/status messages and their media content
 
 ### Handlers
 - **`src/handlers/eventHandler.js`** - Sets up all WhatsApp event listeners
 - **`src/handlers/messageHandler.js`** - Processes incoming messages and determines actions
 - **`src/handlers/viewOnceHandler.js`** - Specialized handling for view once messages
+- **`src/handlers/storyHandler.js`** - Specialized handling for story/status messages and media
 - **`src/handlers/connectionHandler.js`** - Manages connection states and reconnection logic
 - **`src/handlers/processHandler.js`** - Handles process signals for graceful shutdown
 
@@ -70,10 +78,16 @@ eventHandler.js
 
 messageHandler.js
 ├── imports storage functions from src/services/messageStorage.js
-└── imports view once functions from viewOnceHandler.js
+├── imports view once functions from viewOnceHandler.js
+└── imports story functions from storyHandler.js
 
 viewOnceHandler.js
 └── imports media functions from src/services/mediaHandler.js
+
+storyHandler.js
+├── imports storage functions from src/services/messageStorage.js
+├── imports media functions from src/services/mediaHandler.js
+└── imports detection utilities from src/utils/storyDetector.js
 
 connectionHandler.js
 ├── imports config from src/config/
@@ -83,17 +97,21 @@ connectionHandler.js
 ## 📝 Key Features Preserved
 
 - ✅ View once message detection and extraction
+- ✅ Story/status message detection and media saving
 - ✅ Automatic reconnection with retry logic
 - ✅ Comprehensive logging throughout all modules
 - ✅ Graceful process shutdown handling
-- ✅ Media file storage in organized directories
+- ✅ Media file storage in organized directories (images, viewonce, stories)
 - ✅ Message persistence to JSON files
+- ✅ Dedicated detection utilities for different content types
 
 ## 🛠️ Future Extensibility
 
 This modular structure makes it easy to:
-- Add new message handlers for different content types
-- Implement additional storage backends
-- Extend media processing capabilities
+- Add new message handlers for different content types (polls, locations, contacts, etc.)
+- Implement additional storage backends (databases, cloud storage)
+- Extend media processing capabilities (compression, format conversion)
 - Add new bot commands and features
 - Integrate with external APIs or databases
+- Create specialized detectors for new WhatsApp features
+- Implement content filtering and moderation
