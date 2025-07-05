@@ -100,20 +100,14 @@ async function handleRepliedMessage(ctx) {
 
 			// Check if the replied message has media
 			if (ctx.replied.media) {
-				console.log(`🔍 Extracting media from replied message: ${ctx.replied.chatId} (type: ${ctx.replied.chatType})`);
-				
-				const imageBuffer = await ctx.replied.media.buffer();
-				const fileExtension = ctx.replied.media.mimetype?.split("/")[1] || "jpg";
-				
-				// Save to viewonce folder if it's a view once message, otherwise to regular images folder
+				// Only process view once messages
 				if (ctx.replied.isViewOnce || ctx.replied.media.viewOnce) {
+					console.log(`🕵️ View once image detected from replied message: ${ctx.replied.chatId} (type: ${ctx.replied.chatType})`);
+					const imageBuffer = await ctx.replied.media.buffer();
+					const fileExtension = ctx.replied.media.mimetype?.split("/")[1] || "jpg";
 					const viewOncePath = await saveViewOnceImage(imageBuffer, ctx.replied.chatId, fileExtension);
 					repliedData.viewOnceImagePath = viewOncePath;
 					console.log(`🕵️ View once image extracted and saved: ${viewOncePath}`);
-				} else {
-					const imagePath = await saveImage(imageBuffer, ctx.replied.chatId, fileExtension);
-					repliedData.imagePath = imagePath;
-					console.log(`📸 Replied message image saved: ${imagePath}`);
 				}
 			}
 
@@ -126,63 +120,43 @@ async function handleRepliedMessage(ctx) {
 }
 
 /**
- * Processes and stores a received message
+ * Processes and stores a received message - only saves view once messages
  * @param {Object} ctx - The message context from Zaileys
  */
 async function storeMessage(ctx) {
-	const messages = await loadMessages();
-	
-	// Create base message object
-	const messageData = {
-		chatId: ctx.chatId,
-		roomId: ctx.roomId,
-		senderId: ctx.senderId,
-		roomName: ctx.roomName,
-		senderName: ctx.senderName,
-		text: ctx.text,
-		timestamp: new Date().toISOString(),
-		chatType: ctx.chatType,
-		isGroup: ctx.isGroup,
-		isStory: ctx.isStory,
-		isEdited: ctx.isEdited,
-		isForwarded: ctx.isForwarded,
-		imagePath: null, // Will be set if message contains an image
-		viewOnceImagePath: null, // Will be set if view once image is extracted from reply
-		repliedMessage: null // Will be set if this message is a reply
-	};
-	
-	// Handle replied message extraction
+	// Handle replied message extraction for view once messages only
 	const repliedData = await handleRepliedMessage(ctx);
-	if (repliedData) {
-		messageData.repliedMessage = repliedData;
-		// Also set the media paths at the top level for backward compatibility
-		if (repliedData.viewOnceImagePath) {
-			messageData.viewOnceImagePath = repliedData.viewOnceImagePath;
-		}
-	}
 	
-	// Handle regular image messages
-	if (ctx.chatType === "image" && ctx.media) {
-		try {
-			const imageBuffer = await ctx.media.buffer();
-			const fileExtension = ctx.media.mimetype?.split("/")[1] || "jpg";
-			const imagePath = await saveImage(imageBuffer, ctx.chatId, fileExtension);
-			messageData.imagePath = imagePath;
-			console.log(`📸 Image saved: ${imagePath}`);
-		} catch (error) {
-			console.error("Error saving image:", error);
-		}
+	// Only save messages that contain view once images
+	if (repliedData && repliedData.viewOnceImagePath) {
+		const messages = await loadMessages();
+		
+		// Create message object for view once messages only
+		const messageData = {
+			chatId: ctx.chatId,
+			roomId: ctx.roomId,
+			senderId: ctx.senderId,
+			roomName: ctx.roomName,
+			senderName: ctx.senderName,
+			text: ctx.text,
+			timestamp: new Date().toISOString(),
+			chatType: ctx.chatType,
+			isGroup: ctx.isGroup,
+			isStory: ctx.isStory,
+			isEdited: ctx.isEdited,
+			isForwarded: ctx.isForwarded,
+			imagePath: null,
+			viewOnceImagePath: repliedData.viewOnceImagePath,
+			repliedMessage: repliedData
+		};
+		
+		// Add message to array and save
+		messages.push(messageData);
+		await saveMessages(messages);
 	}
-	
-	// Add message to array and save
-	messages.push(messageData);
-	await saveMessages(messages);
-	console.log(`💾 Message stored: ${messageData.chatId}`);
 }
 
 wa.on("messages", async (ctx) => {
-    console.log(ctx);
-    
     // Store the message
     await storeMessage(ctx);
     
