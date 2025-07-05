@@ -1,6 +1,6 @@
 import fs from "fs/promises";
 import path from "path";
-import { botLogger } from "../logger.js";
+import { botLogger } from "../../logger.js";
 
 /**
  * Saves image buffer to the images folder

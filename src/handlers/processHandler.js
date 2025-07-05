@@ -1,4 +1,4 @@
-import { botLogger } from "../logger.js";
+import { botLogger } from "../../logger.js";
 
 /**
  * Sets up process event handlers for graceful shutdown and error handling

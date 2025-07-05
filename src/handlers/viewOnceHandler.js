@@ -1,4 +1,4 @@
-import { botLogger } from "../logger.js";
+import { botLogger } from "../../logger.js";
 import { saveViewOnceImage } from "../services/mediaHandler.js";
 
 /**

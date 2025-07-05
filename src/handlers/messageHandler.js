@@ -1,4 +1,4 @@
-import { botLogger } from "../logger.js";
+import { botLogger } from "../../logger.js";
 import { loadMessages, saveMessages } from "../services/messageStorage.js";
 import { detectViewOnceContent, handleRepliedMessage } from "../handlers/viewOnceHandler.js";
 

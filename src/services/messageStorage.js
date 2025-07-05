@@ -1,5 +1,5 @@
 import fs from "fs/promises";
-import { botLogger } from "../logger.js";
+import { botLogger } from "../../logger.js";
 
 /**
  * Ensures the messages JSON file exists, creates it if not

@@ -1,5 +1,5 @@
 import { Client } from "zaileys";
-import { botLogger } from "../logger.js";
+import { botLogger } from "../../logger.js";
 import { CLIENT_CONFIG, RECONNECT_CONFIG } from "../config/index.js";
 
 /**
