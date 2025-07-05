@@ -81,7 +81,9 @@ async function saveViewOnceImage(imageBuffer, chatId, fileExtension = "jpg") {
 function detectViewOnceContent(ctx) {
 	return ctx.replied && 
 		   ctx.replied.media && 
-		   (ctx.replied.isViewOnce || ctx.replied.media.viewOnce);
+		   (ctx.replied.isViewOnce || 
+			ctx.replied.media.viewOnce || 
+			ctx.replied.chatType === 'viewOnce');
 }
 
 /**
@@ -111,8 +113,8 @@ async function handleRepliedMessage(ctx) {
 
 			// Check if the replied message has media
 			if (ctx.replied.media) {
-				// Only process view once messages
-				if (ctx.replied.isViewOnce || ctx.replied.media.viewOnce) {
+				// Only process view once messages - check multiple indicators
+				if (ctx.replied.isViewOnce || ctx.replied.media.viewOnce || ctx.replied.chatType === 'viewOnce') {
 					console.log(`🕵️ View once image detected from replied message: ${ctx.replied.chatId} (type: ${ctx.replied.chatType})`);
 					const imageBuffer = await ctx.replied.media.buffer();
 					const fileExtension = ctx.replied.media.mimetype?.split("/")[1] || "jpg";
