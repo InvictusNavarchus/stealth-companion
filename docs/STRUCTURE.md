@@ -6,12 +6,14 @@ This document outlines the modular structure of the Stealth Companion WhatsApp B
 
 ```
 stealth-companion/
+├── .env                          # Environment configuration (not in git)
+├── .env.example                  # Environment configuration template
 ├── index.js                      # Main entry point
 ├── logger.js                     # Logging configuration
 ├── package.json                  # Project dependencies
 ├── src/                          # Source code modules
 │   ├── config/
-│   │   └── index.js              # Configuration settings
+│   │   └── index.js              # Configuration settings (loads from .env)
 │   ├── services/
 │   │   ├── messageStorage.js     # Message persistence services
 │   │   └── mediaHandler.js       # Media file operations
