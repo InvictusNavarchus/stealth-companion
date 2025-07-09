@@ -11,17 +11,26 @@ class RoomTransport extends winston.Transport {
         super(opts);
         this.dirname = opts.dirname || './logs/rooms';
         this.format = opts.format || winston.format.simple();
-        this._ensureLogDir();
+        // Initialize directory ready promise to handle race condition
+        this._dirReady = this._ensureLogDir();
     }
 
     /**
      * Ensures the log directory exists
+     * @returns {Promise<void>} Promise that resolves when directory is ready
      */
     async _ensureLogDir() {
         try {
             await fs.mkdir(this.dirname, { recursive: true });
         } catch (error) {
-            // Directory already exists or permission error
+            // Check if error is due to directory already existing
+            if (error.code === 'EEXIST') {
+                // Directory already exists, this is fine
+                return;
+            }
+            // For other errors like permission issues, log and rethrow
+            console.error('Failed to create log directory:', error.message);
+            throw error;
         }
     }
 
@@ -39,29 +48,37 @@ class RoomTransport extends winston.Transport {
      * @param {Object} info - Log information object
      * @param {Function} callback - Callback function
      */
-    log(info, callback) {
+    async log(info, callback) {
         setImmediate(() => {
             this.emit('logged', info);
         });
 
-        // Only log if roomId is present in metadata
-        if (info.roomId) {
-            const sanitizedRoomId = this._sanitizeRoomId(info.roomId);
-            const filename = path.join(this.dirname, `${sanitizedRoomId}.log`);
-            const formattedMessage = this.format.transform(info);
-            
-            if (formattedMessage) {
-                const logLine = typeof formattedMessage === 'string' 
-                    ? formattedMessage 
-                    : formattedMessage[Symbol.for('message')] || JSON.stringify(formattedMessage);
-                
-                fs.appendFile(filename, logLine + '\n').catch(err => {
-                    this.emit('error', err);
-                });
-            }
-        }
+        try {
+            // Wait for directory to be ready before proceeding
+            await this._dirReady;
 
-        callback();
+            // Only log if roomId is present in metadata
+            if (info.roomId) {
+                const sanitizedRoomId = this._sanitizeRoomId(info.roomId);
+                const filename = path.join(this.dirname, `${sanitizedRoomId}.log`);
+                const formattedMessage = this.format.transform(info);
+                
+                if (formattedMessage) {
+                    const logLine = typeof formattedMessage === 'string' 
+                        ? formattedMessage 
+                        : formattedMessage[Symbol.for('message')] || JSON.stringify(formattedMessage);
+                    
+                    // Wait for file write to complete before calling callback
+                    await fs.appendFile(filename, logLine + '\n');
+                }
+            }
+            
+            // Call callback only after successful completion
+            callback();
+        } catch (error) {
+            this.emit('error', error);
+            callback(error);
+        }
     }
 }
 
