@@ -2,11 +2,53 @@ import { Client } from "zaileys";
 import { botLogger } from "../../logger.js";
 import { CLIENT_CONFIG, RECONNECT_CONFIG } from "../config/index.js";
 
+// Connection monitoring state
+let connectionTimeout = null;
+let currentClient = null;
+
+/**
+ * Clears any existing connection timeout
+ */
+function clearConnectionTimeout() {
+	if (connectionTimeout) {
+		clearTimeout(connectionTimeout);
+		connectionTimeout = null;
+		botLogger.info("Connection timeout cleared");
+	}
+}
+
+/**
+ * Sets a connection timeout to monitor for failed connection attempts
+ * @param {number} timeoutMs - Timeout duration in milliseconds
+ */
+function setConnectionTimeout(timeoutMs = RECONNECT_CONFIG.retryDelay) {
+	// Clear any existing timeout to prevent duplicates
+	clearConnectionTimeout();
+	
+	connectionTimeout = setTimeout(() => {
+		botLogger.warning("Connection timeout reached - no 'open' status received", {
+			timeoutMs: timeoutMs,
+			currentRetries: RECONNECT_CONFIG.currentRetries
+		});
+		
+		// Trigger reconnection attempt
+		attemptReconnection();
+	}, timeoutMs);
+	
+	botLogger.info("Connection timeout set", {
+		timeoutMs: timeoutMs,
+		attempt: RECONNECT_CONFIG.currentRetries + 1
+	});
+}
+
 /**
  * Attempts to reconnect to WhatsApp with retry logic
  * @returns {Promise<void>}
  */
 export async function attemptReconnection() {
+	// Clear any existing timeout since we're manually triggering reconnection
+	clearConnectionTimeout();
+	
 	if (RECONNECT_CONFIG.currentRetries >= RECONNECT_CONFIG.maxRetries) {
 		botLogger.error("Maximum reconnection attempts reached", {
 			maxRetries: RECONNECT_CONFIG.maxRetries,
@@ -27,11 +69,14 @@ export async function attemptReconnection() {
 		await new Promise(resolve => setTimeout(resolve, RECONNECT_CONFIG.retryDelay));
 		
 		// Create new client instance for reconnection
-		const newWa = new Client(CLIENT_CONFIG);
+		currentClient = new Client(CLIENT_CONFIG);
 
 		// Re-setup event listeners for the new client
 		const { setupEventListeners } = await import("./eventHandler.js");
-		setupEventListeners(newWa);
+		setupEventListeners(currentClient);
+		
+		// Set timeout to monitor this connection attempt
+		setConnectionTimeout();
 		
 		botLogger.info("Reconnection attempt initiated", {
 			attempt: RECONNECT_CONFIG.currentRetries,
@@ -51,25 +96,56 @@ export async function attemptReconnection() {
 }
 
 /**
- * Handles connection status changes
+ * Handles connection status changes with robust monitoring
  * @param {Object} ctx - The connection context from Zaileys
  */
 export async function handleConnection(ctx) {
+	botLogger.info(`Connection status change: ${ctx.status}`, {
+		status: ctx.status,
+		currentRetries: RECONNECT_CONFIG.currentRetries
+	});
+
 	switch (ctx.status) {
 		case 'connecting':
 			botLogger.connection("Connecting to WhatsApp...");
+			// Set timeout to monitor this connection attempt
+			setConnectionTimeout();
 			break;
+			
 		case 'open':
 			botLogger.success("Successfully connected to WhatsApp!");
+			// Clear timeout since connection succeeded
+			clearConnectionTimeout();
 			// Reset retry counter on successful connection
 			RECONNECT_CONFIG.currentRetries = 0;
 			break;
+			
 		case 'close':
 			botLogger.warning("WhatsApp connection closed");
+			// Clear any existing timeout
+			clearConnectionTimeout();
 			// Attempt reconnection after connection closes
 			await attemptReconnection();
 			break;
+			
 		default:
-			botLogger.connection(`Connection status: ${ctx.status}`);
+			// Handle any other connection states (like failed, timeout, etc.)
+			botLogger.warning(`Unhandled connection status: ${ctx.status}`);
+			// For any non-open status, we should consider it a failed connection
+			// Clear existing timeout and attempt reconnection
+			clearConnectionTimeout();
+			await attemptReconnection();
+			break;
 	}
+}
+
+/**
+ * Initializes connection monitoring for a new client instance
+ * @param {Client} client - The Zaileys client instance
+ */
+export function initializeConnectionMonitoring(client) {
+	currentClient = client;
+	// Set initial timeout when client is created
+	setConnectionTimeout();
+	botLogger.info("Connection monitoring initialized for new client");
 }

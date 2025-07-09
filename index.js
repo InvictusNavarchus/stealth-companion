@@ -3,6 +3,7 @@ import { botLogger } from "./logger.js";
 import { CLIENT_CONFIG } from "./src/config/index.js";
 import { setupEventListeners } from "./src/handlers/eventHandler.js";
 import { setupProcessHandlers } from "./src/handlers/processHandler.js";
+import { initializeConnectionMonitoring } from "./src/handlers/connectionHandler.js";
 
 /**
  * Main entry point for the Stealth Companion WhatsApp Bot
@@ -17,6 +18,9 @@ async function main() {
 
 	// Create WhatsApp client
 	const wa = new Client(CLIENT_CONFIG);
+
+	// Initialize connection monitoring
+	initializeConnectionMonitoring(wa);
 
 	// Setup event handlers
 	setupEventListeners(wa);
