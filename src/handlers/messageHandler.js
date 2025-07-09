@@ -104,6 +104,8 @@ export async function handleMessage(ctx, client) {
 		senderDevice: ctx.senderDevice,
 		isGroup: ctx.isGroup,
 		isStory: ctx.isStory,
+		isEdited: ctx.isEdited,
+		isDeleted: ctx.isDeleted,
 		hasReplied: !!ctx.replied,
 		text: ctx.text || '',
 		messageTimestamp: ctx.timestamp
