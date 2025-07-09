@@ -18,15 +18,16 @@ function clearConnectionTimeout() {
 }
 
 /**
- * Sets a connection timeout to monitor for failed connection attempts
- * @param {number} timeoutMs - Timeout duration in milliseconds
+ * Sets a connection establishment timeout to monitor for failed connection attempts
+ * This timeout specifically monitors whether a connection reaches 'open' status within the expected timeframe
+ * @param {number} timeoutMs - Timeout duration in milliseconds for connection establishment
  */
-function setConnectionTimeout(timeoutMs = RECONNECT_CONFIG.retryDelay) {
+function setConnectionEstablishmentTimeout(timeoutMs = RECONNECT_CONFIG.connectionTimeout) {
 	// Clear any existing timeout to prevent duplicates
 	clearConnectionTimeout();
 	
 	connectionTimeout = setTimeout(() => {
-		botLogger.warning("Connection timeout reached - no 'open' status received", {
+		botLogger.warning("Connection establishment timeout reached - no 'open' status received", {
 			timeoutMs: timeoutMs,
 			currentRetries: RECONNECT_CONFIG.currentRetries
 		});
@@ -35,7 +36,7 @@ function setConnectionTimeout(timeoutMs = RECONNECT_CONFIG.retryDelay) {
 		attemptReconnection();
 	}, timeoutMs);
 	
-	botLogger.info("Connection timeout set", {
+	botLogger.info("Connection establishment timeout set", {
 		timeoutMs: timeoutMs,
 		attempt: RECONNECT_CONFIG.currentRetries + 1
 	});
@@ -76,7 +77,7 @@ export async function attemptReconnection() {
 		setupEventListeners(currentClient);
 		
 		// Set timeout to monitor this connection attempt
-		setConnectionTimeout();
+		setConnectionEstablishmentTimeout();
 		
 		botLogger.info("Reconnection attempt initiated", {
 			attempt: RECONNECT_CONFIG.currentRetries,
@@ -109,7 +110,7 @@ export async function handleConnection(ctx) {
 		case 'connecting':
 			botLogger.connection("Connecting to WhatsApp...");
 			// Set timeout to monitor this connection attempt
-			setConnectionTimeout();
+			setConnectionEstablishmentTimeout();
 			break;
 			
 		case 'open':
@@ -145,7 +146,6 @@ export async function handleConnection(ctx) {
  */
 export function initializeConnectionMonitoring(client) {
 	currentClient = client;
-	// Set initial timeout when client is created
-	setConnectionTimeout();
+	// Connection timeout will be set when handleConnection processes the 'connecting' status
 	botLogger.info("Connection monitoring initialized for new client");
 }
