@@ -106,7 +106,7 @@ export async function handleMessage(ctx, client) {
 		isStory: ctx.isStory,
 		hasReplied: !!ctx.replied,
 		text: ctx.text || '',
-		'message-timestamp': ctx.timestamp
+		messageTimestamp: ctx.timestamp
 	});
 
 	// Handle stories/status updates first
