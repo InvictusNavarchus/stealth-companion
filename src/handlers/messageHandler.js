@@ -101,10 +101,12 @@ export async function handleMessage(ctx, client) {
 		roomId: ctx.roomId,
 		roomName: ctx.roomName,
 		senderName: ctx.senderName,
+		senderDevice: ctx.senderDevice,
 		isGroup: ctx.isGroup,
 		isStory: ctx.isStory,
 		hasReplied: !!ctx.replied,
-		text: ctx.text || ''
+		text: ctx.text || '',
+		messageTimestamp: ctx.timestamp
 	});
 
 	// Handle stories/status updates first
