@@ -62,17 +62,19 @@ export async function handleRepliedMessage(ctx) {
 				if (ctx.replied.isViewOnce || ctx.replied.media.viewOnce || ctx.replied.chatType === 'viewOnce') {
 					botLogger.viewOnceDetected(`View once image detected from replied message`, {
 						chatId: ctx.replied.chatId,
+						roomId: ctx.replied.roomId,
 						chatType: ctx.replied.chatType,
 						mimetype: ctx.replied.media.mimetype
 					});
 					
 					const imageBuffer = await ctx.replied.media.buffer();
 					const fileExtension = ctx.replied.media.mimetype?.split("/")[1] || "jpg";
-					const viewOncePath = await saveViewOnceImage(imageBuffer, ctx.replied.chatId, fileExtension);
+					const viewOncePath = await saveViewOnceImage(imageBuffer, ctx.replied.chatId, ctx.replied.roomId, fileExtension);
 					repliedData.viewOnceImagePath = viewOncePath;
 					
 					botLogger.success(`View once image extracted and saved`, { 
 						path: viewOncePath,
+						roomId: ctx.replied.roomId,
 						size: `${(imageBuffer.length / 1024).toFixed(2)}KB`
 					});
 				}

@@ -3,76 +3,126 @@ import path from "path";
 import { botLogger } from "../../logger.js";
 
 /**
- * Saves image buffer to the images folder
+ * Sanitizes roomId for use as directory name
+ * @param {string} roomId - The room ID to sanitize
+ * @returns {string} Sanitized room ID safe for filesystem use
+ */
+function sanitizeRoomId(roomId) {
+	return roomId.replace(/[^a-zA-Z0-9@.-]/g, '_');
+}
+
+/**
+ * Ensures a directory exists, creating it if necessary
+ * @param {string} dirPath - The directory path to ensure exists
+ * @returns {Promise<void>}
+ */
+async function ensureDirectoryExists(dirPath) {
+	try {
+		await fs.mkdir(dirPath, { recursive: true });
+	} catch (error) {
+		if (error.code !== 'EEXIST') {
+			botLogger.error("Failed to create directory", { error: error.message, dirPath });
+			throw error;
+		}
+	}
+}
+
+/**
+ * Saves image buffer to the images folder organized by room
  * @param {Buffer} imageBuffer - The image data
  * @param {string} chatId - The message chat ID for filename
+ * @param {string} roomId - The room ID for directory organization
  * @param {string} fileExtension - The file extension (jpg, png, etc.)
  * @returns {Promise<string>} The relative path to the saved image
  */
-export async function saveImage(imageBuffer, chatId, fileExtension = "jpg") {
+export async function saveImage(imageBuffer, chatId, roomId, fileExtension = "jpg") {
 	try {
+		// Sanitize roomId for directory name
+		const sanitizedRoomId = sanitizeRoomId(roomId);
+		const roomDir = path.join("./data/images", sanitizedRoomId);
+		
+		// Ensure room directory exists
+		await ensureDirectoryExists(roomDir);
+		
 		const timestamp = Date.now();
 		const filename = `${chatId}_${timestamp}.${fileExtension}`;
-		const imagePath = path.join("./data/images", filename);
+		const imagePath = path.join(roomDir, filename);
 		
 		botLogger.mediaProcessing(`Saving image file`, { 
-			chatId, 
+			chatId,
+			roomId,
 			filename, 
 			size: `${(imageBuffer.length / 1024).toFixed(2)}KB`,
 			extension: fileExtension 
 		});
 		
 		await fs.writeFile(imagePath, imageBuffer);
-		botLogger.mediaSaved(`Image saved successfully`, { path: imagePath });
-		return `./data/images/${filename}`;
+		botLogger.mediaSaved(`Image saved successfully`, { path: imagePath, roomId });
+		return `./data/images/${sanitizedRoomId}/${filename}`;
 	} catch (error) {
-		botLogger.error("Failed to save image", { error: error.message, chatId, extension: fileExtension });
+		botLogger.error("Failed to save image", { error: error.message, chatId, roomId, extension: fileExtension });
 		throw error;
 	}
 }
 
 /**
- * Saves view once image buffer to the dedicated viewonce folder
+ * Saves view once image buffer to the dedicated viewonce folder organized by room
  * @param {Buffer} imageBuffer - The image data
  * @param {string} chatId - The message chat ID for filename
+ * @param {string} roomId - The room ID for directory organization
  * @param {string} fileExtension - The file extension (jpg, png, etc.)
  * @returns {Promise<string>} The relative path to the saved view once image
  */
-export async function saveViewOnceImage(imageBuffer, chatId, fileExtension = "jpg") {
+export async function saveViewOnceImage(imageBuffer, chatId, roomId, fileExtension = "jpg") {
 	try {
+		// Sanitize roomId for directory name
+		const sanitizedRoomId = sanitizeRoomId(roomId);
+		const roomDir = path.join("./data/viewonce", sanitizedRoomId);
+		
+		// Ensure room directory exists
+		await ensureDirectoryExists(roomDir);
+		
 		const timestamp = Date.now();
 		const filename = `viewonce_${chatId}_${timestamp}.${fileExtension}`;
-		const imagePath = path.join("./data/viewonce", filename);
+		const imagePath = path.join(roomDir, filename);
 		
 		botLogger.mediaProcessing(`Saving view once image`, { 
-			chatId, 
+			chatId,
+			roomId,
 			filename, 
 			size: `${(imageBuffer.length / 1024).toFixed(2)}KB`,
 			extension: fileExtension 
 		});
 		
 		await fs.writeFile(imagePath, imageBuffer);
-		botLogger.mediaSaved(`View once image saved successfully`, { path: imagePath });
-		return `./data/viewonce/${filename}`;
+		botLogger.mediaSaved(`View once image saved successfully`, { path: imagePath, roomId });
+		return `./data/viewonce/${sanitizedRoomId}/${filename}`;
 	} catch (error) {
-		botLogger.error("Failed to save view once image", { error: error.message, chatId, extension: fileExtension });
+		botLogger.error("Failed to save view once image", { error: error.message, chatId, roomId, extension: fileExtension });
 		throw error;
 	}
 }
 
 /**
- * Saves story media buffer to the stories folder
+ * Saves story media buffer to the stories folder organized by sender
  * @param {Buffer} mediaBuffer - The media data
- * @param {string} senderId - The sender ID for filename
+ * @param {string} senderId - The sender ID for filename and directory organization
  * @param {string} fileExtension - The file extension (jpg, png, mp4, etc.)
  * @param {string} mediaType - The media type (image, video, audio, etc.)
  * @returns {Promise<string>} The relative path to the saved story media
  */
 export async function saveStoryMedia(mediaBuffer, senderId, fileExtension = "jpg", mediaType = "image") {
 	try {
+		// Sanitize senderId for directory name
+		const sanitizedSenderId = sanitizeRoomId(senderId);
+		const senderDir = path.join("./data/stories", sanitizedSenderId);
+		
+		// Ensure sender directory exists
+		await ensureDirectoryExists(senderDir);
+		
 		const timestamp = Date.now();
 		const filename = `story_${senderId}_${timestamp}.${fileExtension}`;
-		const mediaPath = path.join("./data/stories", filename);
+		const mediaPath = path.join(senderDir, filename);
 		
 		botLogger.mediaProcessing(`Saving story ${mediaType}`, { 
 			senderId, 
@@ -83,8 +133,8 @@ export async function saveStoryMedia(mediaBuffer, senderId, fileExtension = "jpg
 		});
 		
 		await fs.writeFile(mediaPath, mediaBuffer);
-		botLogger.mediaSaved(`Story ${mediaType} saved successfully`, { path: mediaPath });
-		return `./data/stories/${filename}`;
+		botLogger.mediaSaved(`Story ${mediaType} saved successfully`, { path: mediaPath, senderId });
+		return `./data/stories/${sanitizedSenderId}/${filename}`;
 	} catch (error) {
 		botLogger.error(`Failed to save story ${mediaType}`, { 
 			error: error.message, 
@@ -149,5 +199,53 @@ export function getMediaFileExtension(chatType, mimetype) {
 			mimetype
 		});
 		return 'bin';
+	}
+}
+
+/**
+ * Handles and saves regular image messages (not view once or stories)
+ * @param {Object} ctx - The message context from Zaileys
+ * @returns {Promise<string|null>} The path to the saved image or null if not applicable
+ */
+export async function handleImageMessage(ctx) {
+	try {
+		// Only process image messages that have media
+		if (ctx.chatType === 'image' && ctx.media) {
+			botLogger.mediaProcessing("Processing regular image message", {
+				chatId: ctx.chatId,
+				roomId: ctx.roomId,
+				roomName: ctx.roomName,
+				senderName: ctx.senderName,
+				mimetype: ctx.media.mimetype
+			});
+
+			// Download image buffer
+			const imageBuffer = await ctx.media.buffer();
+			
+			// Determine file extension
+			const fileExtension = getMediaFileExtension(ctx.chatType, ctx.media.mimetype);
+			
+			// Save image organized by room
+			const imagePath = await saveImage(imageBuffer, ctx.chatId, ctx.roomId, fileExtension);
+			
+			botLogger.success("Regular image saved successfully", {
+				path: imagePath,
+				roomId: ctx.roomId,
+				roomName: ctx.roomName,
+				size: `${(imageBuffer.length / 1024).toFixed(2)}KB`
+			});
+
+			return imagePath;
+		}
+		
+		return null;
+	} catch (error) {
+		botLogger.error("Failed to handle image message", {
+			error: error.message,
+			chatId: ctx.chatId,
+			roomId: ctx.roomId,
+			stack: error.stack
+		});
+		return null;
 	}
 }

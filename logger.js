@@ -1,4 +1,86 @@
 import winston from 'winston';
+import { promises as fs } from 'fs';
+import path from 'path';
+
+/**
+ * Custom Winston transport for room-based logging
+ * Logs messages to separate files based on roomId
+ */
+class RoomTransport extends winston.Transport {
+    constructor(opts) {
+        super(opts);
+        this.dirname = opts.dirname || './logs/rooms';
+        this.format = opts.format || winston.format.simple();
+        // Initialize directory ready promise to handle race condition
+        this._dirReady = this._ensureLogDir();
+    }
+
+    /**
+     * Ensures the log directory exists
+     * @returns {Promise<void>} Promise that resolves when directory is ready
+     */
+    async _ensureLogDir() {
+        try {
+            await fs.mkdir(this.dirname, { recursive: true });
+        } catch (error) {
+            // Check if error is due to directory already existing
+            if (error.code === 'EEXIST') {
+                // Directory already exists, this is fine
+                return;
+            }
+            // For other errors like permission issues, log and rethrow
+            console.error('Failed to create log directory:', error.message);
+            throw error;
+        }
+    }
+
+    /**
+     * Sanitizes roomId for use as filename
+     * @param {string} roomId - The room ID to sanitize
+     * @returns {string} Sanitized room ID
+     */
+    _sanitizeRoomId(roomId) {
+        return roomId.replace(/[^a-zA-Z0-9@.-]/g, '_');
+    }
+
+    /**
+     * Main logging method
+     * @param {Object} info - Log information object
+     * @param {Function} callback - Callback function
+     */
+    async log(info, callback) {
+        setImmediate(() => {
+            this.emit('logged', info);
+        });
+
+        try {
+            // Wait for directory to be ready before proceeding
+            await this._dirReady;
+
+            // Only log if roomId is present in metadata
+            if (info.roomId) {
+                const sanitizedRoomId = this._sanitizeRoomId(info.roomId);
+                const filename = path.join(this.dirname, `${sanitizedRoomId}.log`);
+                const formattedMessage = this.format.transform(info);
+                
+                if (formattedMessage) {
+                    const logLine = typeof formattedMessage === 'string' 
+                        ? formattedMessage 
+                        : formattedMessage[Symbol.for('message')] || JSON.stringify(formattedMessage);
+                    
+                    // Wait for file write to complete before calling callback
+                    await fs.appendFile(filename, logLine + '\n');
+                }
+            }
+            
+            // Call callback only after successful completion
+            callback();
+        } catch (error) {
+            this.emit('error', error);
+            callback(error);
+        }
+    }
+}
 
 /**
  * Custom format for logging with emoji and HH:mm:ss timestamp
@@ -76,6 +158,22 @@ const logger = winston.createLogger({
                     return `${emoji} [${timestamp}] ${level.toUpperCase()}: ${message}${metaStr}`;
                 })
             )
+        }),
+        // Custom room-based transport for logging by roomId
+        new RoomTransport({
+            dirname: './logs/rooms',
+            format: winston.format.combine(
+                winston.format.timestamp({
+                    format: 'YYYY-MM-DD HH:mm:ss'
+                }),
+                winston.format.printf(({ timestamp, level, message, ...meta }) => {
+                    const emoji = getEmojiForLevel(level);
+                    // Remove roomId from meta display since it's already in the filename
+                    const { roomId, ...displayMeta } = meta;
+                    const metaStr = Object.keys(displayMeta).length ? `\n    ${JSON.stringify(displayMeta, null, 2).split('\n').join('\n    ')}` : '';
+                    return `${emoji} [${timestamp}] ${level.toUpperCase()}: ${message}${metaStr}`;
+                })
+            )
         })
     ]
 });
@@ -120,7 +218,14 @@ export const botLogger = {
     
     // Processing status
     processing: (message, meta = {}) => logger.info(`⚙️ ${message}`, meta),
-    completed: (message, meta = {}) => logger.info(`✨ ${message}`, meta)
+    completed: (message, meta = {}) => logger.info(`✨ ${message}`, meta),
+    
+    // Room-specific logging methods
+    roomMessage: (roomId, message, meta = {}) => logger.info(`💬 ${message}`, { ...meta, roomId }),
+    roomActivity: (roomId, message, meta = {}) => logger.info(`🔄 ${message}`, { ...meta, roomId }),
+    roomError: (roomId, message, meta = {}) => logger.error(`❌ ${message}`, { ...meta, roomId }),
+    roomWarning: (roomId, message, meta = {}) => logger.warn(`⚠️ ${message}`, { ...meta, roomId }),
+    roomInfo: (roomId, message, meta = {}) => logger.info(`ℹ️ ${message}`, { ...meta, roomId })
 };
 
 export default logger;
