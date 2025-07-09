@@ -32,6 +32,7 @@ const parseInteger = (value, defaultValue) => {
 export const RECONNECT_CONFIG = {
 	maxRetries: parseInteger(process.env.RECONNECT_MAX_RETRIES, 10),
 	retryDelay: parseInteger(process.env.RECONNECT_RETRY_DELAY, 30000),
+	connectionTimeout: parseInteger(process.env.RECONNECT_CONNECTION_TIMEOUT, 30000),
 	currentRetries: 0
 };
 
