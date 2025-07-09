@@ -93,7 +93,3 @@ See [STRUCTURE.md](docs/STRUCTURE.md) for detailed project structure documentati
 3. Make your changes
 4. Test thoroughly
 5. Submit a pull request
-
-## 📄 License
-
-ISC License - see package.json for details.
