@@ -35,7 +35,7 @@ const MEDIA_CONFIG = {
 		formats: ['audio/ogg', 'audio/mp4', 'audio/mpeg']
 	},
 	document: {
-		enabled: false, // Disabled by default due to potential large files
+		enabled: true,
 		maxSize: mbToBytes(20), // 20MB
 		formats: ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document']
 	}
