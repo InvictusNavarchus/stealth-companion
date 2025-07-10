@@ -16,27 +16,27 @@ const mbToBytes = (mb) => mb * 1024 * 1024;
 const MEDIA_CONFIG = {
 	image: {
 		enabled: true,
-		maxSize: mbToBytes(50), // 50MB
+		maxSize: mbToBytes(50),
 		formats: ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp']
 	},
 	video: {
 		enabled: true,
-		maxSize: mbToBytes(100), // 100MB
+		maxSize: mbToBytes(100),
 		formats: ['video/mp4', 'video/avi', 'video/mov', 'video/mkv']
 	},
 	audio: {
 		enabled: true,
-		maxSize: mbToBytes(25), // 25MB
+		maxSize: mbToBytes(50),
 		formats: ['audio/mpeg', 'audio/mp4', 'audio/ogg', 'audio/wav', 'audio/m4a']
 	},
 	voice: {
 		enabled: true,
-		maxSize: mbToBytes(10), // 10MB
+		maxSize: mbToBytes(50),
 		formats: ['audio/ogg', 'audio/mp4', 'audio/mpeg']
 	},
 	document: {
 		enabled: true,
-		maxSize: mbToBytes(20), // 20MB
+		maxSize: mbToBytes(50),
 		formats: ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document']
 	}
 };
