@@ -4,32 +4,39 @@ import { handleMediaMessage, getMediaFileExtension } from "../services/mediaHand
 import { shouldStoreImage } from "../config/imageConfig.js";
 
 /**
+ * Converts megabytes to bytes
+ * @param {number} mb - Size in megabytes
+ * @returns {number} Size in bytes
+ */
+const mbToBytes = (mb) => mb * 1024 * 1024;
+
+/**
  * Configuration for different media types
  */
 const MEDIA_CONFIG = {
 	image: {
 		enabled: true,
-		maxSize: 50 * 1024 * 1024, // 50MB
+		maxSize: mbToBytes(50), // 50MB
 		formats: ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp']
 	},
 	video: {
 		enabled: true,
-		maxSize: 100 * 1024 * 1024, // 100MB
+		maxSize: mbToBytes(100), // 100MB
 		formats: ['video/mp4', 'video/avi', 'video/mov', 'video/mkv']
 	},
 	audio: {
 		enabled: true,
-		maxSize: 25 * 1024 * 1024, // 25MB
+		maxSize: mbToBytes(25), // 25MB
 		formats: ['audio/mpeg', 'audio/mp4', 'audio/ogg', 'audio/wav', 'audio/m4a']
 	},
 	voice: {
 		enabled: true,
-		maxSize: 10 * 1024 * 1024, // 10MB
+		maxSize: mbToBytes(10), // 10MB
 		formats: ['audio/ogg', 'audio/mp4', 'audio/mpeg']
 	},
 	document: {
 		enabled: false, // Disabled by default due to potential large files
-		maxSize: 20 * 1024 * 1024, // 20MB
+		maxSize: mbToBytes(20), // 20MB
 		formats: ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document']
 	}
 };
