@@ -249,3 +249,108 @@ export async function handleImageMessage(ctx) {
 		return null;
 	}
 }
+
+/**
+ * Handles and saves regular media messages (images, videos, documents, audio)
+ * @param {Object} ctx - The message context from Zaileys
+ * @returns {Promise<string|null>} The path to the saved media or null if not applicable
+ */
+export async function handleMediaMessage(ctx) {
+	try {
+		// Support multiple media types
+		const supportedTypes = ['image', 'video', 'document', 'audio', 'voice'];
+		
+		if (supportedTypes.includes(ctx.chatType) && ctx.media) {
+			botLogger.mediaProcessing(`Processing ${ctx.chatType} message`, {
+				chatId: ctx.chatId,
+				roomId: ctx.roomId,
+				roomName: ctx.roomName,
+				senderName: ctx.senderName,
+				mimetype: ctx.media.mimetype,
+				mediaType: ctx.chatType
+			});
+
+			// Download media buffer
+			const mediaBuffer = await ctx.media.buffer();
+			
+			// Determine file extension
+			const fileExtension = getMediaFileExtension(ctx.chatType, ctx.media.mimetype);
+			
+			// Use appropriate save function based on media type
+			let mediaPath;
+			if (ctx.chatType === 'image') {
+				mediaPath = await saveImage(mediaBuffer, ctx.chatId, ctx.roomId, fileExtension);
+			} else {
+				// For non-image media, use a generic media save function
+				mediaPath = await saveMedia(mediaBuffer, ctx.chatId, ctx.roomId, fileExtension, ctx.chatType);
+			}
+			
+			botLogger.success(`${ctx.chatType} saved successfully`, {
+				path: mediaPath,
+				roomId: ctx.roomId,
+				roomName: ctx.roomName,
+				size: `${(mediaBuffer.length / 1024).toFixed(2)}KB`,
+				mediaType: ctx.chatType
+			});
+
+			return mediaPath;
+		}
+		
+		return null;
+	} catch (error) {
+		botLogger.error(`Failed to handle ${ctx.chatType} message`, {
+			error: error.message,
+			chatId: ctx.chatId,
+			roomId: ctx.roomId,
+			mediaType: ctx.chatType,
+			stack: error.stack
+		});
+		return null;
+	}
+}
+
+/**
+ * Saves generic media buffer to the media folder organized by room and type
+ * @param {Buffer} mediaBuffer - The media data
+ * @param {string} chatId - The message chat ID for filename
+ * @param {string} roomId - The room ID for directory organization
+ * @param {string} fileExtension - The file extension
+ * @param {string} mediaType - The media type (video, audio, document, etc.)
+ * @returns {Promise<string>} The relative path to the saved media
+ */
+export async function saveMedia(mediaBuffer, chatId, roomId, fileExtension = "bin", mediaType = "media") {
+	try {
+		// Sanitize roomId for directory name
+		const sanitizedRoomId = sanitizeRoomId(roomId);
+		const roomDir = path.join("./data/media", sanitizedRoomId, mediaType);
+		
+		// Ensure room and media type directory exists
+		await ensureDirectoryExists(roomDir);
+		
+		const timestamp = Date.now();
+		const filename = `${mediaType}_${chatId}_${timestamp}.${fileExtension}`;
+		const mediaPath = path.join(roomDir, filename);
+		
+		botLogger.mediaProcessing(`Saving ${mediaType} file`, { 
+			chatId,
+			roomId,
+			filename, 
+			size: `${(mediaBuffer.length / 1024).toFixed(2)}KB`,
+			extension: fileExtension,
+			mediaType
+		});
+		
+		await fs.writeFile(mediaPath, mediaBuffer);
+		botLogger.mediaSaved(`${mediaType} saved successfully`, { path: mediaPath, roomId, mediaType });
+		return `./data/media/${sanitizedRoomId}/${mediaType}/${filename}`;
+	} catch (error) {
+		botLogger.error(`Failed to save ${mediaType}`, { 
+			error: error.message, 
+			chatId, 
+			roomId, 
+			extension: fileExtension, 
+			mediaType 
+		});
+		throw error;
+	}
+}
