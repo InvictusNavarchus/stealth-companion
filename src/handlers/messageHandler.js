@@ -2,6 +2,7 @@ import { botLogger } from "../../logger.js";
 import { loadMessages, saveMessages } from "../services/messageStorage.js";
 import { detectViewOnceContent, handleRepliedMessage } from "../handlers/viewOnceHandler.js";
 import { detectStoryContent, handleStory } from "../handlers/storyHandler.js";
+import { detectMediaContent, handleMediaMessageWrapper } from "../handlers/mediaHandler.js";
 
 /**
  * Processes and stores a received message - only saves view once messages
@@ -107,6 +108,8 @@ export async function handleMessage(ctx, client) {
 		isEdited: ctx.isEdited,
 		isDeleted: ctx.isDeleted,
 		hasReplied: !!ctx.replied,
+		hasMedia: !!ctx.media,
+		chatType: ctx.chatType,
 		text: ctx.text || '',
 		messageTimestamp: ctx.timestamp
 	});
@@ -115,6 +118,12 @@ export async function handleMessage(ctx, client) {
 	if (detectStoryContent(ctx)) {
 		await handleStory(ctx, client);
 		return; // Stories are handled separately
+	}
+
+	// Handle regular media messages (images, videos, audio, documents)
+	if (detectMediaContent(ctx)) {
+		await handleMediaMessageWrapper(ctx, client);
+		return; // Media messages are handled separately
 	}
 
 	// Only process and store messages if they contain view once content
