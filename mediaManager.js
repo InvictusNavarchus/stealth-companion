@@ -11,7 +11,7 @@ import {
 	cleanupOldMedia, 
 	findDuplicateMedia, 
 	exportMediaData 
-} from '../src/utils/mediaManager.js';
+} from './src/utils/mediaManager.js';
 
 const commands = {
 	stats: 'Show storage statistics',
