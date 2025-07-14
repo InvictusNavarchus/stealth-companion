@@ -9,9 +9,7 @@ yarn-debug.log*
 yarn-error.log*
 
 # Data directories
-data/images/
-data/viewonce/
-data/messages.json
+data/
 
 # Runtime data
 pids
