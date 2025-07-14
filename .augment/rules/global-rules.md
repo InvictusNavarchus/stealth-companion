@@ -2,6 +2,9 @@
 type: "always_apply"
 ---
 
+## dependencies
+use npm for managing dependencies
+
 ## Git
 
 1. After every code changes, write a suitable git commit message according to git conventional commits.
