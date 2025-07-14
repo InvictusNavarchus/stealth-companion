@@ -8,6 +8,17 @@ import { botLogger } from "../../logger.js";
  */
 
 /**
+ * Media directories that are managed by this system
+ * @constant {string[]}
+ */
+const MEDIA_DIRECTORIES = [
+	'./data/images',
+	'./data/viewonce', 
+	'./data/stories',
+	'./data/media'
+];
+
+/**
  * Get comprehensive storage statistics
  * @returns {Promise<Object>} Detailed storage statistics
  */
@@ -162,13 +173,6 @@ export async function getDirectorySize(dirPath) {
  * @returns {Promise<Object>} Directory analysis for all media folders
  */
 export async function analyzeMediaDirectories() {
-	const directories = [
-		'./data/images',
-		'./data/viewonce', 
-		'./data/stories',
-		'./data/media'
-	];
-
 	const analysis = {
 		overview: {
 			totalSize: 0,
@@ -177,7 +181,7 @@ export async function analyzeMediaDirectories() {
 		directories: {}
 	};
 
-	for (const dir of directories) {
+	for (const dir of MEDIA_DIRECTORIES) {
 		try {
 			const dirInfo = await getDirectorySize(dir);
 			analysis.directories[dir] = dirInfo;
@@ -215,13 +219,6 @@ export async function cleanupOldMedia(daysOld = 30, dryRun = true) {
 		errors: [],
 		estimatedSpaceSaved: 0
 	};
-
-	const directories = [
-		'./data/images',
-		'./data/viewonce',
-		'./data/stories',
-		'./data/media'
-	];
 
 	async function scanDirectory(dirPath) {
 		try {
@@ -269,7 +266,7 @@ export async function cleanupOldMedia(daysOld = 30, dryRun = true) {
 		}
 	}
 
-	for (const dir of directories) {
+	for (const dir of MEDIA_DIRECTORIES) {
 		await scanDirectory(dir);
 	}
 
@@ -291,13 +288,6 @@ export async function findDuplicateMedia() {
 		potentialDuplicates: [],
 		totalDuplicateSize: 0
 	};
-
-	const directories = [
-		'./data/images',
-		'./data/viewonce',
-		'./data/stories', 
-		'./data/media'
-	];
 
 	async function scanForDuplicates(dirPath) {
 		try {
@@ -334,7 +324,7 @@ export async function findDuplicateMedia() {
 		}
 	}
 
-	for (const dir of directories) {
+	for (const dir of MEDIA_DIRECTORIES) {
 		await scanForDuplicates(dir);
 	}
 
