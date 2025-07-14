@@ -64,11 +64,17 @@ export async function getStorageStatistics() {
 			stats.bySender[senderName].count++;
 
 			// Group by date
-			const date = new Date(msg.timestamp || msg.processedAt).toISOString().split('T')[0];
-			if (!stats.byDate[date]) {
-				stats.byDate[date] = { count: 0 };
+			const timestamp = msg.timestamp || msg.processedAt;
+			if (timestamp) {
+				const dateObj = new Date(timestamp);
+				if (!isNaN(dateObj.getTime())) {
+					const date = dateObj.toISOString().split('T')[0];
+					if (!stats.byDate[date]) {
+						stats.byDate[date] = { count: 0 };
+					}
+					stats.byDate[date].count++;
+				}
 			}
-			stats.byDate[date].count++;
 
 			// Add file size if available
 			const fileSize = msg.media?.fileLength || 0;
@@ -396,11 +402,11 @@ export async function exportMediaData(format = 'json') {
 			
 			mediaMessages.forEach(msg => {
 				const row = [
-					msg.timestamp || '',
+					escapeCsvField(msg.timestamp || ''),
 					escapeCsvField(msg.roomName || ''),
 					escapeCsvField(msg.senderName || ''),
-					msg.mediaType || msg.chatType || '',
-					msg.contentType || '',
+					escapeCsvField(msg.mediaType || msg.chatType || ''),
+					escapeCsvField(msg.contentType || ''),
 					msg.media?.fileLength || 0,
 					escapeCsvField(msg.mediaPath || msg.imagePath || msg.viewOnceImagePath || msg.storyMediaPath || ''),
 					escapeCsvField(msg.media?.caption || msg.text || ''),
