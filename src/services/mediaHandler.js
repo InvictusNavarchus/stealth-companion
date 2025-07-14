@@ -156,6 +156,9 @@ export function getMediaFileExtension(chatType, mimetype) {
 	try {
 		// Extract extension from mimetype if available
 		if (mimetype) {
+			// Handle mimetypes with additional parameters (e.g., "audio/ogg; codecs=opus")
+			const baseMimetype = mimetype.split(';')[0].trim();
+
 			const mimeExtensionMap = {
 				'image/jpeg': 'jpg',
 				'image/jpg': 'jpg',
@@ -170,13 +173,13 @@ export function getMediaFileExtension(chatType, mimetype) {
 				'audio/ogg': 'ogg',
 				'audio/wav': 'wav'
 			};
-			
-			if (mimeExtensionMap[mimetype]) {
-				return mimeExtensionMap[mimetype];
+
+			if (mimeExtensionMap[baseMimetype]) {
+				return mimeExtensionMap[baseMimetype];
 			}
-			
+
 			// Fallback: try to extract from mimetype string
-			const parts = mimetype.split('/');
+			const parts = baseMimetype.split('/');
 			if (parts.length === 2) {
 				return parts[1];
 			}

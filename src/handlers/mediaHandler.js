@@ -67,16 +67,31 @@ export function detectMediaContent(ctx) {
 			return false;
 		}
 
-		// Check file size
-		if (ctx.media.fileLength && ctx.media.fileLength > config.maxSize) {
-			botLogger.debug(`Media file too large: ${ctx.media.fileLength} > ${config.maxSize}`);
-			return false;
+		// Check file size - handle both number and Long integer types
+		let fileSize = 0;
+		if (ctx.media.fileLength) {
+			if (typeof ctx.media.fileLength === 'number') {
+				fileSize = ctx.media.fileLength;
+			} else if (ctx.media.fileLength.low !== undefined) {
+				// Handle Long integer type (common in WhatsApp libraries)
+				fileSize = ctx.media.fileLength.low + (ctx.media.fileLength.high || 0) * 0x100000000;
+			} else {
+				fileSize = Number(ctx.media.fileLength);
+			}
+
+			if (fileSize > config.maxSize) {
+				botLogger.debug(`Media file too large: ${fileSize} > ${config.maxSize}`);
+				return false;
+			}
 		}
 
-		// Check format
-		if (ctx.media.mimetype && config.formats.length > 0 && !config.formats.includes(ctx.media.mimetype)) {
-			botLogger.debug(`Media format not supported: ${ctx.media.mimetype}`);
-			return false;
+		// Check format - handle mimetypes with additional parameters (e.g., "audio/ogg; codecs=opus")
+		if (ctx.media.mimetype && config.formats.length > 0) {
+			const baseMimetype = ctx.media.mimetype.split(';')[0].trim();
+			if (!config.formats.includes(baseMimetype)) {
+				botLogger.debug(`Media format not supported: ${ctx.media.mimetype} (base: ${baseMimetype})`);
+				return false;
+			}
 		}
 
 		// For images, also check the image-specific filters
