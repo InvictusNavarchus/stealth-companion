@@ -41,13 +41,7 @@ export const IMAGE_STORAGE_CONFIG = {
 	// Storage organization
 	storage: {
 		// Organize by room (true) or by date (false)
-		organizeByRoom: true,
-		
-		// Create subdirectories by date within room folders
-		addDateSubfolders: false,
-		
-		// Date format for subfolder names (if enabled)
-		dateFormat: 'YYYY-MM-DD'
+		organizeByRoom: true
 	},
 	
 	// Image processing options

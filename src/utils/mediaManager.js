@@ -116,11 +116,17 @@ export async function getDirectorySize(dirPath) {
 			for (const item of items) {
 				const fullPath = path.join(currentPath, item.name);
 				
+				// Skip symbolic links to prevent infinite loops
+				const stats = await fs.lstat(fullPath);
+				if (stats.isSymbolicLink()) {
+					continue;
+				}
+				
 				if (item.isDirectory()) {
 					await scanDirectory(fullPath);
 				} else if (item.isFile()) {
-					const stats = await fs.stat(fullPath);
-					totalSize += stats.size;
+					const fileStats = await fs.stat(fullPath);
+					totalSize += fileStats.size;
 					fileCount++;
 				}
 			}
@@ -218,15 +224,21 @@ export async function cleanupOldMedia(daysOld = 30, dryRun = true) {
 			for (const item of items) {
 				const fullPath = path.join(dirPath, item.name);
 				
+				// Skip symbolic links to prevent infinite loops
+				const stats = await fs.lstat(fullPath);
+				if (stats.isSymbolicLink()) {
+					continue;
+				}
+				
 				if (item.isDirectory()) {
 					await scanDirectory(fullPath);
 				} else if (item.isFile()) {
 					results.scanned++;
-					const stats = await fs.stat(fullPath);
+					const fileStats = await fs.stat(fullPath);
 					
-					if (stats.mtime < cutoffDate) {
+					if (fileStats.mtime < cutoffDate) {
 						results.toDelete++;
-						results.estimatedSpaceSaved += stats.size;
+						results.estimatedSpaceSaved += fileStats.size;
 						
 						if (!dryRun) {
 							try {
@@ -288,11 +300,17 @@ export async function findDuplicateMedia() {
 			for (const item of items) {
 				const fullPath = path.join(dirPath, item.name);
 				
+				// Skip symbolic links to prevent infinite loops
+				const stats = await fs.lstat(fullPath);
+				if (stats.isSymbolicLink()) {
+					continue;
+				}
+				
 				if (item.isDirectory()) {
 					await scanForDuplicates(fullPath);
 				} else if (item.isFile()) {
-					const stats = await fs.stat(fullPath);
-					const key = `${item.name}_${stats.size}`;
+					const fileStats = await fs.stat(fullPath);
+					const key = `${item.name}_${fileStats.size}`;
 					
 					if (!duplicates.bySizeAndName[key]) {
 						duplicates.bySizeAndName[key] = [];
@@ -300,8 +318,8 @@ export async function findDuplicateMedia() {
 					
 					duplicates.bySizeAndName[key].push({
 						path: fullPath,
-						size: stats.size,
-						mtime: stats.mtime
+						size: fileStats.size,
+						mtime: fileStats.mtime
 					});
 				}
 			}
@@ -368,16 +386,24 @@ export async function exportMediaData(format = 'json') {
 			
 			const csvRows = [headers.join(',')];
 			
+			// Helper function to escape CSV field values
+			const escapeCsvField = (value) => {
+				if (value == null) return '';
+				const stringValue = String(value);
+				// Replace double quotes with two double quotes, then wrap in quotes
+				return `"${stringValue.replace(/"/g, '""')}"`;
+			};
+			
 			mediaMessages.forEach(msg => {
 				const row = [
 					msg.timestamp || '',
-					`"${msg.roomName || ''}"`,
-					`"${msg.senderName || ''}"`,
+					escapeCsvField(msg.roomName || ''),
+					escapeCsvField(msg.senderName || ''),
 					msg.mediaType || msg.chatType || '',
 					msg.contentType || '',
 					msg.media?.fileLength || 0,
-					`"${msg.mediaPath || msg.imagePath || msg.viewOnceImagePath || msg.storyMediaPath || ''}"`,
-					`"${msg.media?.caption || msg.text || ''}"`,
+					escapeCsvField(msg.mediaPath || msg.imagePath || msg.viewOnceImagePath || msg.storyMediaPath || ''),
+					escapeCsvField(msg.media?.caption || msg.text || ''),
 					msg.isGroup || false
 				];
 				csvRows.push(row.join(','));
