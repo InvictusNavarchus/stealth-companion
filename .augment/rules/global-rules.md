@@ -2,9 +2,6 @@
 type: "always_apply"
 ---
 
-## env
-1. Prefer pnpm for managing dependencies
-
 ## Git
 
 1. After every code changes, write a suitable git commit message according to git conventional commits.
