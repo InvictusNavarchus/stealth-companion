@@ -50,6 +50,11 @@ const MEDIA_CONFIG: Record<SupportedMediaType, MediaConfig> = {
 		enabled: true,
 		maxSize: mbToBytes(50),
 		formats: ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document']
+	},
+	sticker: {
+		enabled: true,
+		maxSize: mbToBytes(10),
+		formats: ['image/webp', 'image/png', 'image/jpeg']
 	}
 };
 

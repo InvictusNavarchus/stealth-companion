@@ -1,7 +1,7 @@
 import fs from "fs/promises";
 import { z } from "zod";
 import { botLogger } from "../../logger.js";
-import { AnyStoredMessage, ChatType } from "../../types/index.js";
+import { AnyStoredMessage } from "../../types/index.js";
 
 // Zod schema for validating stored messages
 const ChatTypeSchema = z.enum([

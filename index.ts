@@ -12,7 +12,7 @@ async function main(): Promise<void> {
 	// Log initialization
 	botLogger.startup("Initializing Stealth Companion WhatsApp Bot", {
 		authType: CLIENT_CONFIG.authType,
-		database: CLIENT_CONFIG.database.type,
+		database: CLIENT_CONFIG.database?.type,
 		autoOnline: CLIENT_CONFIG.autoOnline,
 		autoPresence: CLIENT_CONFIG.autoPresence,
 		autoRead: CLIENT_CONFIG.autoRead,

@@ -194,25 +194,39 @@ export interface ReconnectConfig {
 }
 
 export interface DatabaseConfig {
-  type: string;
+  type: "sqlite" | "postgresql" | "mysql";
   connection: {
     url: string;
   };
 }
 
-export interface ClientConfig {
-  authType: "qr" | "pairing";
-  prefix?: string;
-  ignoreMe?: boolean;
-  showLogs?: boolean;
-  autoRead?: boolean;
-  autoOnline?: boolean;
-  autoPresence?: boolean;
-  autoRejectCall?: boolean;
-  loadLLMSchemas?: boolean;
-  database?: DatabaseConfig;
-  phoneNumber?: number; // Required when authType is "pairing"
-}
+export type ClientConfig =
+  | {
+      authType: "qr";
+      prefix?: string;
+      ignoreMe?: boolean;
+      showLogs?: boolean;
+      autoRead?: boolean;
+      autoOnline?: boolean;
+      autoPresence?: boolean;
+      autoRejectCall?: boolean;
+      loadLLMSchemas?: boolean;
+      database?: DatabaseConfig;
+      phoneNumber?: undefined;
+    }
+  | {
+      authType: "pairing";
+      phoneNumber: number;
+      prefix?: string;
+      ignoreMe?: boolean;
+      showLogs?: boolean;
+      autoRead?: boolean;
+      autoOnline?: boolean;
+      autoPresence?: boolean;
+      autoRejectCall?: boolean;
+      loadLLMSchemas?: boolean;
+      database?: DatabaseConfig;
+    };
 
 export interface ImageStorageConfig {
   enableRegularImages: boolean;

@@ -38,18 +38,38 @@ export const RECONNECT_CONFIG: ReconnectConfig = {
 };
 
 // WhatsApp client configuration
-export const CLIENT_CONFIG: ClientConfig = {
-	authType: (process.env['CLIENT_AUTH_TYPE'] === "pairing" ? "pairing" : "qr"),
-	prefix: process.env['CLIENT_PREFIX'] || "/",
-	ignoreMe: parseBoolean(process.env['CLIENT_IGNORE_ME'], false),
-	showLogs: parseBoolean(process.env['CLIENT_SHOW_LOGS'], true),
-	autoRead: parseBoolean(process.env['CLIENT_AUTO_READ'], true),
-	autoOnline: parseBoolean(process.env['CLIENT_AUTO_ONLINE'], true),
-	autoPresence: parseBoolean(process.env['CLIENT_AUTO_PRESENCE'], true),
-	autoRejectCall: parseBoolean(process.env['CLIENT_AUTO_REJECT_CALL'], true),
-	loadLLMSchemas: parseBoolean(process.env['CLIENT_LOAD_LLM_SCHEMAS'], false),
-	database: {
-		type: process.env['DATABASE_TYPE'] || "sqlite",
-		connection: { url: process.env['DATABASE_URL'] || "./session/zaileys.db" },
-	},
-};
+const authType = process.env['CLIENT_AUTH_TYPE'] === "pairing" ? "pairing" : "qr" as const;
+const databaseType = (process.env['DATABASE_TYPE'] as "sqlite" | "postgresql" | "mysql") || "sqlite";
+
+export const CLIENT_CONFIG: ClientConfig = authType === "pairing"
+	? {
+		authType: "pairing",
+		phoneNumber: parseInt(process.env['CLIENT_PHONE_NUMBER'] || "0"),
+		prefix: process.env['CLIENT_PREFIX'] || "/",
+		ignoreMe: parseBoolean(process.env['CLIENT_IGNORE_ME'], false),
+		showLogs: parseBoolean(process.env['CLIENT_SHOW_LOGS'], true),
+		autoRead: parseBoolean(process.env['CLIENT_AUTO_READ'], true),
+		autoOnline: parseBoolean(process.env['CLIENT_AUTO_ONLINE'], true),
+		autoPresence: parseBoolean(process.env['CLIENT_AUTO_PRESENCE'], true),
+		autoRejectCall: parseBoolean(process.env['CLIENT_AUTO_REJECT_CALL'], true),
+		loadLLMSchemas: parseBoolean(process.env['CLIENT_LOAD_LLM_SCHEMAS'], false),
+		database: {
+			type: databaseType,
+			connection: { url: process.env['DATABASE_URL'] || "./session/zaileys.db" },
+		},
+	}
+	: {
+		authType: "qr",
+		prefix: process.env['CLIENT_PREFIX'] || "/",
+		ignoreMe: parseBoolean(process.env['CLIENT_IGNORE_ME'], false),
+		showLogs: parseBoolean(process.env['CLIENT_SHOW_LOGS'], true),
+		autoRead: parseBoolean(process.env['CLIENT_AUTO_READ'], true),
+		autoOnline: parseBoolean(process.env['CLIENT_AUTO_ONLINE'], true),
+		autoPresence: parseBoolean(process.env['CLIENT_AUTO_PRESENCE'], true),
+		autoRejectCall: parseBoolean(process.env['CLIENT_AUTO_REJECT_CALL'], true),
+		loadLLMSchemas: parseBoolean(process.env['CLIENT_LOAD_LLM_SCHEMAS'], false),
+		database: {
+			type: databaseType,
+			connection: { url: process.env['DATABASE_URL'] || "./session/zaileys.db" },
+		},
+	};
