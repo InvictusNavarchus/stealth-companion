@@ -42,10 +42,7 @@
     
     /* Interop Constraints */
     "isolatedModules": true,
-    "allowSyntheticDefaultImports": true,
-    "esModuleInterop": true,
     "preserveSymlinks": false,
-    "forceConsistentCasingInFileNames": true,
     
     /* Type Checking - 100% STRICT MODE */
     "strict": true,
