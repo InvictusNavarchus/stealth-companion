@@ -12,7 +12,6 @@ import winston from 'winston';
 export interface ZaileysClient {
   on(event: "messages", callback: (ctx: MessageContext) => Promise<void>): void;
   on(event: "connection", callback: (ctx: ConnectionContext) => Promise<void>): void;
-  on(event: string, callback: (ctx: MessageContext | ConnectionContext) => Promise<void>): void;
   // Add other client methods as needed
 }
 
@@ -157,7 +156,7 @@ export type MediaType = 'image' | 'video' | 'audio';
 
 export interface MediaMessage {
   id: string;
-  timestamp: string;
+  timestamp: number;
   originalMessage: {
     chatId: string;
     roomId: string;
@@ -203,15 +202,16 @@ export interface DatabaseConfig {
 
 export interface ClientConfig {
   authType: "qr" | "pairing";
-  prefix: string;
-  ignoreMe: boolean;
-  showLogs: boolean;
-  autoRead: boolean;
-  autoOnline: boolean;
-  autoPresence: boolean;
-  autoRejectCall: boolean;
-  loadLLMSchemas: boolean;
-  database: DatabaseConfig;
+  prefix?: string;
+  ignoreMe?: boolean;
+  showLogs?: boolean;
+  autoRead?: boolean;
+  autoOnline?: boolean;
+  autoPresence?: boolean;
+  autoRejectCall?: boolean;
+  loadLLMSchemas?: boolean;
+  database?: DatabaseConfig;
+  phoneNumber?: number; // Required when authType is "pairing"
 }
 
 export interface ImageStorageConfig {
@@ -382,7 +382,7 @@ export type AnyStoredMessage = StoredMessage | StoredMediaMessage | StoredViewOn
 // UTILITY TYPES
 // ============================================================================
 
-export type SupportedMediaType = 'image' | 'video' | 'document' | 'audio' | 'voice';
+export type SupportedMediaType = Extract<ChatType, 'image' | 'video' | 'document' | 'audio' | 'voice' | 'sticker'>;
 
 export interface FileExtensionMap {
   [key: string]: string;
