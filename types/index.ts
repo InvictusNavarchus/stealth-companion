@@ -269,11 +269,23 @@ export interface LogInfo {
 // ============================================================================
 
 export interface StorageStatistics {
-  totalSize: number;
-  totalFiles: number;
-  byType: Record<string, { count: number; totalSize: number }>;
+  overview: {
+    totalMessages: number;
+    messagesWithMedia: number;
+    totalEstimatedSize: number;
+  };
+  byContentType: Record<string, { count: number; totalSize: number }>;
+  byMediaType: Record<string, { count: number; totalSize: number }>;
   byRoom: Record<string, { count: number; isGroup: boolean }>;
   bySender: Record<string, { count: number }>;
+  byDate: Record<string, { count: number }>;
+  recentActivity: Array<{
+    timestamp: string;
+    roomName: string;
+    senderName: string;
+    mediaType: string;
+    hasMedia: boolean;
+  }>;
 }
 
 export interface DirectoryAnalysis {
@@ -295,9 +307,12 @@ export interface DirectoryInfo {
 export interface CleanupResults {
   scanned: number;
   toDelete: number;
-  spaceSaved: number;
+  deletedFiles: string[];
+  errors: Array<{ file?: string; directory?: string; error: string }>;
+  estimatedSpaceSaved: number;
+  dryRun: boolean;
+  cutoffDate: string;
   formattedSpaceSaved: string;
-  deletedFiles?: string[];
 }
 
 export interface DuplicateFile {
