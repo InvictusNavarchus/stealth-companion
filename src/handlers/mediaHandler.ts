@@ -1,14 +1,15 @@
 import { botLogger } from "../../logger.js";
 import { loadMessages, saveMessages } from "../services/messageStorage.js";
-import { handleMediaMessage, getMediaFileExtension } from "../services/mediaHandler.js";
+import { handleMediaMessage } from "../services/mediaHandler.js";
 import { shouldStoreImage } from "../config/imageConfig.js";
+import { MessageContext, ZaileysClient } from "../../types/index.js";
 
 /**
  * Converts megabytes to bytes
  * @param {number} mb - Size in megabytes
  * @returns {number} Size in bytes
  */
-const mbToBytes = (mb) => mb * 1024 * 1024;
+const mbToBytes = (mb: number): number => mb * 1024 * 1024;
 
 /**
  * Configuration for different media types

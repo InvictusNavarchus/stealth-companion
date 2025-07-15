@@ -19,7 +19,9 @@
   "dependencies": {
     "dotenv": "^17.1.0",
     "winston": "^3.17.0",
-    "zaileys": "^1.1.33"
+    "winston-transport": "^4.9.0",
+    "zaileys": "^1.1.33",
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "@types/node": "^22.10.5",

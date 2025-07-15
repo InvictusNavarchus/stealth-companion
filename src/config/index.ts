@@ -39,7 +39,7 @@ export const RECONNECT_CONFIG: ReconnectConfig = {
 
 // WhatsApp client configuration
 export const CLIENT_CONFIG: ClientConfig = {
-	authType: process.env['CLIENT_AUTH_TYPE'] || "qr",
+	authType: (process.env['CLIENT_AUTH_TYPE'] as "qr" | "pairing") || "qr",
 	prefix: process.env['CLIENT_PREFIX'] || "/",
 	ignoreMe: parseBoolean(process.env['CLIENT_IGNORE_ME'], false),
 	showLogs: parseBoolean(process.env['CLIENT_SHOW_LOGS'], true),

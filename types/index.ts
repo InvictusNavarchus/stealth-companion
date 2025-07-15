@@ -34,6 +34,8 @@ export interface MediaInfo {
 
 export interface MessageContext {
   chatId: string;
+  channelId?: string;
+  uniqueId?: string;
   roomId: string;
   roomName: string;
   senderId: string;
@@ -44,6 +46,7 @@ export interface MessageContext {
   isEdited: boolean;
   isDeleted: boolean;
   isViewOnce?: boolean;
+  isFromMe?: boolean;
   chatType: ChatType;
   text?: string;
   timestamp: number;
@@ -181,7 +184,7 @@ export interface DatabaseConfig {
 }
 
 export interface ClientConfig {
-  authType: string;
+  authType: "qr" | "pairing";
   prefix: string;
   ignoreMe: boolean;
   showLogs: boolean;
