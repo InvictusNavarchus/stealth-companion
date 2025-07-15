@@ -2,7 +2,12 @@ import { botLogger } from "../../logger.js";
 import { loadMessages, saveMessages } from "../services/messageStorage.js";
 import { handleMediaMessage } from "../services/mediaHandler.js";
 import { shouldStoreImage } from "../config/imageConfig.js";
-import { MessageContext } from "../../types/index.js";
+import { MessageContext, StoredMediaMessage, SupportedMediaType, AnyStoredMessage, StoredMessage } from "../../types/index.js";
+
+// Type guards
+function isStoredMessage(msg: AnyStoredMessage): msg is StoredMessage {
+	return 'originalMessage' in msg;
+}
 
 /**
  * Converts megabytes to bytes
@@ -14,7 +19,13 @@ const mbToBytes = (mb: number): number => mb * 1024 * 1024;
 /**
  * Configuration for different media types
  */
-const MEDIA_CONFIG = {
+interface MediaConfig {
+	enabled: boolean;
+	maxSize: number;
+	formats: string[];
+}
+
+const MEDIA_CONFIG: Record<SupportedMediaType, MediaConfig> = {
 	image: {
 		enabled: true,
 		maxSize: mbToBytes(50),
@@ -44,10 +55,10 @@ const MEDIA_CONFIG = {
 
 /**
  * Detects if a message contains media content that should be stored
- * @param {Object} ctx - The message context from Zaileys
+ * @param {MessageContext} ctx - The message context from Zaileys
  * @returns {boolean} True if media content should be stored
  */
-export function detectMediaContent(ctx) {
+export function detectMediaContent(ctx: MessageContext): boolean {
 	try {
 		// Check if message has media
 		if (!ctx.media || !ctx.chatType) {
@@ -60,7 +71,7 @@ export function detectMediaContent(ctx) {
 		}
 
 		// Check if media type is supported
-		const mediaType = ctx.chatType;
+		const mediaType = ctx.chatType as SupportedMediaType;
 		const config = MEDIA_CONFIG[mediaType];
 		
 		if (!config || !config.enabled) {
@@ -73,9 +84,6 @@ export function detectMediaContent(ctx) {
 		if (ctx.media.fileLength) {
 			if (typeof ctx.media.fileLength === 'number') {
 				fileSize = ctx.media.fileLength;
-			} else if (ctx.media.fileLength.low !== undefined) {
-				// Handle Long integer type (common in WhatsApp libraries)
-				fileSize = ctx.media.fileLength.low + (ctx.media.fileLength.high || 0) * 0x100000000;
 			} else {
 				fileSize = Number(ctx.media.fileLength);
 			}
@@ -87,9 +95,9 @@ export function detectMediaContent(ctx) {
 		}
 
 		// Check format - handle mimetypes with additional parameters (e.g., "audio/ogg; codecs=opus")
-		if (ctx.media.mimetype && config.formats.length > 0) {
-			const baseMimetype = ctx.media.mimetype.split(';')[0].trim();
-			if (!config.formats.includes(baseMimetype)) {
+		if (ctx.media?.mimetype && config.formats.length > 0) {
+			const baseMimetype = ctx.media.mimetype?.split(';')[0]?.trim();
+			if (baseMimetype && !config.formats.includes(baseMimetype)) {
 				botLogger.debug(`Media format not supported: ${ctx.media.mimetype} (base: ${baseMimetype})`);
 				return false;
 			}
@@ -111,7 +119,7 @@ export function detectMediaContent(ctx) {
 		return true;
 	} catch (error) {
 		botLogger.error("Error in media content detection", {
-			error: error.message,
+			error: error instanceof Error ? error.message : String(error),
 			chatId: ctx.chatId,
 			chatType: ctx.chatType
 		});
@@ -121,9 +129,9 @@ export function detectMediaContent(ctx) {
 
 /**
  * Processes and stores a media message
- * @param {Object} ctx - The message context from Zaileys
+ * @param {MessageContext} ctx - The message context from Zaileys
  */
-export async function storeMediaMessage(ctx) {
+export async function storeMediaMessage(ctx: MessageContext): Promise<void> {
 	try {
 		botLogger.processing(`Processing ${ctx.chatType} message`, {
 			chatId: ctx.chatId,
@@ -143,19 +151,19 @@ export async function storeMediaMessage(ctx) {
 			const messages = await loadMessages();
 			
 			// Create media message object
-			const mediaData = {
+			const mediaData: StoredMediaMessage = {
 				// Main message metadata
 				chatId: ctx.chatId,
-				channelId: ctx.channelId,
-				uniqueId: ctx.uniqueId,
+				...(ctx.channelId && { channelId: ctx.channelId }),
+				...(ctx.uniqueId && { uniqueId: ctx.uniqueId }),
 				roomId: ctx.roomId,
 				roomName: ctx.roomName,
 				senderId: ctx.senderId,
 				senderName: ctx.senderName,
-				senderDevice: ctx.senderDevice,
+				...(ctx.senderDevice && { senderDevice: ctx.senderDevice }),
 				timestamp: ctx.timestamp,
-				text: ctx.text || '',
-				isFromMe: ctx.isFromMe,
+				...(ctx.text && { text: ctx.text }),
+				...(ctx.isFromMe !== undefined && { isFromMe: ctx.isFromMe }),
 				isGroup: ctx.isGroup,
 				
 				// Media specific data
@@ -166,14 +174,15 @@ export async function storeMediaMessage(ctx) {
 				
 				// Media metadata
 				media: {
-					mimetype: ctx.media.mimetype,
-					caption: ctx.media.caption,
-					height: ctx.media.height,
-					width: ctx.media.width,
-					fileLength: ctx.media.fileLength,
-					duration: ctx.media.duration, // For audio/video
-					pages: ctx.media.pages, // For documents
-					fileName: ctx.media.fileName // For documents
+					mimetype: ctx.media?.mimetype || '',
+					...(ctx.media?.caption && { caption: ctx.media.caption }),
+					...(ctx.media?.height && { height: ctx.media.height }),
+					...(ctx.media?.width && { width: ctx.media.width }),
+					...(ctx.media?.fileLength && { fileLength: ctx.media.fileLength }),
+					...(ctx.media?.duration && { duration: ctx.media.duration }),
+					...(ctx.media?.pages && { pages: ctx.media.pages }),
+					...(ctx.media?.fileName && { fileName: ctx.media.fileName }),
+					...(ctx.media?.viewOnce !== undefined && { viewOnce: ctx.media.viewOnce })
 				},
 				
 				// Processing metadata
@@ -205,12 +214,12 @@ export async function storeMediaMessage(ctx) {
 		}
 	} catch (error) {
 		botLogger.error(`Error storing ${ctx.chatType}`, {
-			error: error.message,
+			error: error instanceof Error ? error.message : String(error),
 			chatId: ctx.chatId,
 			roomId: ctx.roomId,
 			roomName: ctx.roomName,
 			mediaType: ctx.chatType,
-			stack: error.stack
+			stack: error instanceof Error ? error.stack : undefined
 		});
 	}
 }
@@ -220,7 +229,12 @@ export async function storeMediaMessage(ctx) {
  * @param {Object} ctx - The message context from Zaileys
  * @param {Object} client - The WhatsApp client instance
  */
-export async function handleMediaMessageWrapper(ctx, client) {
+/**
+ * Wrapper function for handling media messages
+ * @param {MessageContext} ctx - The message context from Zaileys
+ * @param {any} _client - The client instance (unused)
+ */
+export async function handleMediaMessageWrapper(ctx: MessageContext, _client: any): Promise<void> {
 	botLogger.messageReceived(`${ctx.chatType} message received`, {
 		chatId: ctx.chatId,
 		roomId: ctx.roomId,
@@ -244,34 +258,47 @@ export async function handleMediaMessageWrapper(ctx, client) {
  * Get media storage statistics
  * @returns {Object} Statistics about stored media
  */
-export async function getMediaStorageStats() {
+export async function getMediaStorageStats(): Promise<{
+	total: number;
+	byType: Record<string, number>;
+	byRoom: Record<string, number>;
+	totalSize: number;
+}> {
 	try {
 		const messages = await loadMessages();
 		const stats = {
 			total: messages.length,
-			byType: {},
-			byRoom: {},
+			byType: {} as Record<string, number>,
+			byRoom: {} as Record<string, number>,
 			totalSize: 0
 		};
 
 		messages.forEach(msg => {
-			// Count by content type
-			const contentType = msg.contentType || 'unknown';
-			stats.byType[contentType] = (stats.byType[contentType] || 0) + 1;
+			// Count by content type (only for stored media messages)
+			if ('contentType' in msg) {
+				const contentType = msg.contentType || 'unknown';
+				stats.byType[contentType] = (stats.byType[contentType] || 0) + 1;
+			}
+		// Count by room - handle different message structures
+		let roomName = 'unknown';
+		if (isStoredMessage(msg) && msg.originalMessage?.roomName) {
+			roomName = msg.originalMessage.roomName;
+		} else if (msg.roomName) {
+			roomName = msg.roomName;
+		}
+		stats.byRoom[roomName] = (stats.byRoom[roomName] || 0) + 1;
 
-			// Count by room
-			const roomName = msg.roomName || 'unknown';
-			stats.byRoom[roomName] = (stats.byRoom[roomName] || 0) + 1;
-
-			// Sum file sizes (if available)
-			if (msg.media?.fileLength) {
+			// Sum file sizes (only for stored media messages)
+			if ('media' in msg && msg.media?.fileLength) {
 				stats.totalSize += msg.media.fileLength;
 			}
 		});
 
 		return stats;
 	} catch (error) {
-		botLogger.error("Error getting media storage stats", { error: error.message });
+		botLogger.error("Error getting media storage stats", { 
+			error: error instanceof Error ? error.message : String(error) 
+		});
 		return { total: 0, byType: {}, byRoom: {}, totalSize: 0 };
 	}
 }

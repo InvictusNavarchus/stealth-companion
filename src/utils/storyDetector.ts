@@ -49,7 +49,7 @@ export function hasStoryMedia(ctx: MessageContext): boolean {
 			mediaPresent: !!ctx.media
 		});
 		
-		return hasMedia;
+		return !!hasMedia;
 	} catch (error) {
 		botLogger.error("Error in story media detection", {
 			error: (error as Error).message,

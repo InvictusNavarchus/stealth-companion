@@ -1,8 +1,8 @@
 import { botLogger } from "../../logger.js";
 import { loadMessages, saveMessages } from "../services/messageStorage.js";
 import { saveStoryMedia, getMediaFileExtension } from "../services/mediaHandler.js";
+import { MessageContext, StoredStoryMessage } from "../../types/index.js";
 import { 
-	isStoryMessage, 
 	hasStoryMedia, 
 	extractStoryMetadata, 
 	shouldProcessStory 
@@ -10,9 +10,9 @@ import {
 
 /**
  * Processes and stores a story/status update with media
- * @param {Object} ctx - The message context from Zaileys
+ * @param {MessageContext} ctx - The message context from Zaileys
  */
-export async function storeStory(ctx) {
+export async function storeStory(ctx: MessageContext): Promise<void> {
 	try {
 		botLogger.processing("Processing story for media content", {
 			senderId: ctx.senderId,
@@ -37,21 +37,27 @@ export async function storeStory(ctx) {
 					senderId: ctx.senderId,
 					chatType: ctx.chatType,
 					mimetype: ctx.media.mimetype
+				});			// Download media buffer
+			const mediaBuffer = await ctx.media?.buffer?.();
+			
+			if (!mediaBuffer) {
+				botLogger.info("No media buffer available for story", {
+					senderId: ctx.senderId,
+					senderName: ctx.senderName
 				});
-
-				// Download media buffer
-				const mediaBuffer = await ctx.media.buffer();
-				
-				// Determine file extension
-				const fileExtension = getMediaFileExtension(ctx.chatType, ctx.media.mimetype);
-				
-				// Save story media
-				storyMediaPath = await saveStoryMedia(
-					mediaBuffer, 
-					ctx.senderId, 
-					fileExtension, 
-					ctx.chatType
-				);
+				return;
+			}
+			
+			// Determine file extension
+			const fileExtension = getMediaFileExtension(ctx.chatType, ctx.media.mimetype);
+			
+			// Save story media
+			storyMediaPath = await saveStoryMedia(
+				mediaBuffer, 
+				ctx.senderId, 
+				fileExtension, 
+				ctx.chatType
+			);
 
 				botLogger.mediaSaved("Story media saved successfully", {
 					path: storyMediaPath,
@@ -60,7 +66,7 @@ export async function storeStory(ctx) {
 				});
 			} catch (mediaError) {
 				botLogger.error("Failed to process story media", {
-					error: mediaError.message,
+					error: mediaError instanceof Error ? mediaError.message : String(mediaError),
 					senderId: ctx.senderId,
 					chatType: ctx.chatType
 				});
@@ -73,14 +79,27 @@ export async function storeStory(ctx) {
 		const messages = await loadMessages();
 		
 		// Create story data object
-		const storyData = {
-			...storyMetadata,
-			
-			// Add media path if successfully saved
-			storyMediaPath,
+		const storyData: StoredStoryMessage = {
+			// Basic message properties
+			chatId: ctx.chatId,
+			...(ctx.channelId && { channelId: ctx.channelId }),
+			...(ctx.uniqueId && { uniqueId: ctx.uniqueId }),
+			roomId: ctx.roomId,
+			roomName: ctx.roomName,
+			senderId: ctx.senderId,
+			senderName: ctx.senderName,
+			...(ctx.senderDevice && { senderDevice: ctx.senderDevice }),
+			timestamp: ctx.timestamp,
+			...(ctx.text && { text: ctx.text }),
+			...(ctx.isFromMe !== undefined && { isFromMe: ctx.isFromMe }),
+			isGroup: ctx.isGroup,
+			chatType: ctx.chatType,
 			
 			// Processing metadata
 			processedAt: new Date().toISOString(),
+			
+			// Add media path if successfully saved
+			storyMediaPath,
 			mediaType: ctx.chatType,
 			
 			// Story specific data
@@ -103,10 +122,10 @@ export async function storeStory(ctx) {
 		});
 	} catch (error) {
 		botLogger.error("Error storing story", {
-			error: error.message,
+			error: error instanceof Error ? error.message : String(error),
 			senderId: ctx.senderId,
 			senderName: ctx.senderName,
-			stack: error.stack
+			stack: error instanceof Error ? error.stack : undefined
 		});
 	}
 }
@@ -116,7 +135,12 @@ export async function storeStory(ctx) {
  * @param {Object} ctx - The message context from Zaileys
  * @param {Object} client - The WhatsApp client instance
  */
-export async function handleStory(ctx, client) {
+/**
+ * Wrapper function to handle story processing
+ * @param {MessageContext} ctx - The message context from Zaileys
+ * @param {any} _client - The client instance (unused)
+ */
+export async function handleStory(ctx: MessageContext, _client: any): Promise<void> {
 	botLogger.messageReceived("Story received", {
 		senderId: ctx.senderId,
 		senderName: ctx.senderName,
@@ -142,6 +166,11 @@ export async function handleStory(ctx, client) {
  * @param {Object} ctx - The message context from Zaileys
  * @returns {boolean} True if this is a processable story
  */
-export function detectStoryContent(ctx) {
+/**
+ * Detects if a message contains story content
+ * @param {MessageContext} ctx - The message context from Zaileys
+ * @returns {boolean} True if the message is a story
+ */
+export function detectStoryContent(ctx: MessageContext): boolean {
 	return shouldProcessStory(ctx);
 }

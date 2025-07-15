@@ -6,169 +6,174 @@
  */
 
 import {
-	getStorageStatistics,
-	analyzeMediaDirectories,
-	cleanupOldMedia,
+	getMediaStats,
+	analyzeMediaDirectory,
+	cleanupOrphanedMedia,
 	findDuplicateMedia,
-	exportMediaData
+	exportMediaToCSV
 } from './src/utils/mediaManager.js';
-import { StorageStatistics, DirectoryAnalysis, CleanupResults } from './types/index.js';
+
+// Helper function to format bytes
+function formatBytes(bytes: number, decimals: number = 2): string {
+	if (bytes === 0) return '0 Bytes';
+	
+	const k = 1024;
+	const dm = decimals < 0 ? 0 : decimals;
+	const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
+	
+	const i = Math.floor(Math.log(bytes) / Math.log(k));
+	
+	return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+}
 
 const commands: Record<string, string> = {
 	stats: 'Show storage statistics',
 	analyze: 'Analyze media directories',
 	cleanup: 'Clean up old media files (dry run by default)',
 	duplicates: 'Find duplicate media files',
-	export: 'Export media data to JSON/CSV'
+	export: 'Export media data to CSV',
+	help: 'Show this help message'
 };
 
 function showHelp(): void {
-	console.log('🔧 Media Storage Manager');
-	console.log('========================\n');
-	console.log('Available commands:');
+	console.log('📁 Media Management CLI Tool\n');
+	console.log('Usage: node mediaManager.js [command] [options]\n');
+	console.log('Commands:');
+	
 	Object.entries(commands).forEach(([cmd, desc]) => {
-		console.log(`  ${cmd.padEnd(12)} - ${desc}`);
+		console.log(`  ${cmd.padEnd(12)} ${desc}`);
 	});
+	
+	console.log('\nOptions:');
+	console.log('  --room=ID    Filter by specific room ID');
+	console.log('  --execute    Actually perform cleanup (not just dry run)');
+	console.log('  --format=csv Export format (default: csv)');
 	console.log('\nExamples:');
 	console.log('  node mediaManager.js stats');
-	console.log('  node mediaManager.js cleanup --days 30 --execute');
-	console.log('  node mediaManager.js export --format csv > media_export.csv');
+	console.log('  node mediaManager.js stats --room=12345@s.whatsapp.net');
+	console.log('  node mediaManager.js cleanup --execute');
+	console.log('  node mediaManager.js export --room=12345@s.whatsapp.net');
 }
 
-function formatBytes(bytes: number): string {
-	if (bytes === 0) return '0 B';
-	const k = 1024;
-	const sizes = ['B', 'KB', 'MB', 'GB'];
-	const i = Math.floor(Math.log(bytes) / Math.log(k));
-	return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-}
+async function showStats(roomId?: string): Promise<void> {
+	console.log('📊 Media Storage Statistics');
+	console.log('==========================================\n');
 
-async function runStats(): Promise<void> {
-	console.log('📊 Storage Statistics');
-	console.log('====================\n');
-
-	const stats: StorageStatistics = await getStorageStatistics();
+	const stats = await getMediaStats(roomId);
 
 	console.log('📈 Overview:');
-	console.log(`  Total Messages: ${stats.overview.totalMessages}`);
-	console.log(`  Messages with Media: ${stats.overview.messagesWithMedia}`);
-	console.log(`  Estimated Size: ${formatBytes(stats.overview.totalEstimatedSize)}\n`);
+	console.log(`  Total Messages: ${stats.overview.totalMessages.toLocaleString()}`);
+	console.log(`  Messages with Media: ${stats.overview.messagesWithMedia.toLocaleString()}`);
+	console.log(`  Estimated Total Size: ${formatBytes(stats.overview.totalEstimatedSize)}\n`);
 
 	console.log('📂 By Content Type:');
-	Object.entries(stats.byContentType).forEach(([type, data]) => {
-		console.log(`  ${type}: ${data.count} files (${formatBytes(data.totalSize)})`);
-	});
+	Object.entries(stats.byContentType)
+		.sort(([,a], [,b]) => b.count - a.count)
+		.slice(0, 10)
+		.forEach(([type, data]) => {
+			console.log(`  ${type.padEnd(15)} ${String(data.count).padStart(6)} files ${formatBytes(data.totalSize).padStart(10)}`);
+		});
 
-	console.log('\n🏠 Top Rooms:');
-	const topRooms = Object.entries(stats.byRoom)
-		.sort((a, b) => b[1].count - a[1].count)
-		.slice(0, 10);
-	topRooms.forEach(([room, data]) => {
-		const groupIcon = data.isGroup ? '👥' : '👤';
-		console.log(`  ${groupIcon} ${room}: ${data.count} files`);
-	});
+	console.log('\n🎯 By Media Type:');
+	Object.entries(stats.byMediaType)
+		.sort(([,a], [,b]) => b.count - a.count)
+		.forEach(([type, data]) => {
+			console.log(`  ${type.padEnd(15)} ${String(data.count).padStart(6)} files ${formatBytes(data.totalSize).padStart(10)}`);
+		});
 
-	console.log('\n👤 Top Senders:');
-	const topSenders = Object.entries(stats.bySender)
-		.sort((a, b) => b[1].count - a[1].count)
-		.slice(0, 10);
-	topSenders.forEach(([sender, data]) => {
-		console.log(`  ${sender}: ${data.count} files`);
-	});
+	console.log('\n💬 Top 10 Most Active Rooms:');
+	Object.entries(stats.byRoom)
+		.sort(([,a], [,b]) => b.count - a.count)
+		.slice(0, 10)
+		.forEach(([room, data]) => {
+			const groupIcon = data.isGroup ? '👥' : '👤';
+			console.log(`  ${groupIcon} ${room.slice(0, 30).padEnd(32)} ${String(data.count).padStart(6)} messages`);
+		});
 }
 
-async function runAnalyze(): Promise<void> {
-	console.log('🔍 Directory Analysis');
-	console.log('====================\n');
+async function analyzeDirectories(): Promise<void> {
+	console.log('🔍 Media Directory Analysis');
+	console.log('==========================================\n');
 
-	const analysis = await analyzeMediaDirectories() as DirectoryAnalysis;
+	const analysis = await analyzeMediaDirectory();
 
 	console.log('📊 Overview:');
 	console.log(`  Total Size: ${analysis.overview.formattedSize}`);
-	console.log(`  Total Files: ${analysis.overview.totalFiles}\n`);
+	console.log(`  Total Files: ${analysis.overview.totalFiles.toLocaleString()}\n`);
 
-	console.log('📁 Directory Breakdown:');
-	Object.entries(analysis.directories).forEach(([dir, info]) => {
-		if (info.error) {
-			console.log(`  ${dir}: Error - ${info.error}`);
-		} else {
-			console.log(`  ${dir}: ${info.fileCount} files (${info.formattedSize})`);
-		}
-	});
+	console.log('📁 By Directory:');
+	Object.entries(analysis.directories)
+		.sort(([,a], [,b]) => (b.totalSize || 0) - (a.totalSize || 0))
+		.slice(0, 20)
+		.forEach(([dir, data]) => {
+			if (typeof data === 'object' && 'totalSize' in data && 'totalFiles' in data) {
+				console.log(`  ${dir.slice(0, 40).padEnd(42)} ${formatBytes(data.totalSize).padStart(10)} (${data.totalFiles} files)`);
+			}
+		});
 }
 
-async function runCleanup(args: string[]): Promise<void> {
-	const days = parseInt(args.find((arg: string) => arg.startsWith('--days='))?.split('=')[1] || '30') || 30;
-	const execute = args.includes('--execute');
-
-	console.log(`🧹 Media Cleanup ${execute ? '' : '(DRY RUN)'}`);
+async function cleanupFiles(): Promise<void> {
+	console.log('🧹 Media Cleanup');
 	console.log('==========================================\n');
 
-	const results: CleanupResults = await cleanupOldMedia(days, !execute);
+	const results = await cleanupOrphanedMedia();
 
-	console.log(`📊 Cleanup Results (older than ${days} days):`);
-	console.log(`  Files Scanned: ${results.scanned}`);
-	console.log(`  Files to Delete: ${results.toDelete}`);
-	console.log(`  Space to Save: ${results.formattedSpaceSaved}`);
-
-	if (execute) {
-		console.log(`  Files Deleted: ${results.deletedFiles?.length || 0}`);
-		console.log(`  Errors: ${(results as any).errors?.length || 0}`);
-	} else {
-		console.log('\n⚠️  This was a dry run. Use --execute to actually delete files.');
-	}
+	console.log(`📊 Cleanup Results:`);
+	console.log(`  Files Deleted: ${results.deletedFiles?.length || 0}`);
+	console.log(`  Errors: ${results.errors?.length || 0}`);
 
 	if (results.errors.length > 0) {
 		console.log('\n❌ Errors:');
-		results.errors.slice(0, 5).forEach((error: { file?: string; directory?: string; error: string }) => {
+		results.errors.slice(0, 5).forEach(error => {
 			console.log(`  ${error.file || error.directory}: ${error.error}`);
 		});
+		if (results.errors.length > 5) {
+			console.log(`  ... and ${results.errors.length - 5} more errors`);
+		}
 	}
 }
 
-async function runDuplicates(): Promise<void> {
-	console.log('🔍 Duplicate Analysis');
-	console.log('====================\n');
+async function findDuplicates(): Promise<void> {
+	console.log('🔍 Duplicate Media Analysis');
+	console.log('==========================================\n');
 
 	const duplicates = await findDuplicateMedia();
 
-	console.log(`📊 Results:`);
-	console.log(`  Potential Duplicates: ${duplicates.potentialDuplicates.length} groups`);
-	console.log(`  Wasted Space: ${duplicates.formattedTotalWaste}\n`);
+	console.log(`📊 Duplicate Analysis:`);
+	console.log(`  Potential Duplicates: ${duplicates.potentialDuplicates.length}`);
+	console.log(`  Wasted Space: ${formatBytes(duplicates.totalDuplicateSize)}\n`);
 
 	if (duplicates.potentialDuplicates.length > 0) {
-		console.log('🔍 Top Duplicate Groups:');
+		console.log('🔍 Top Duplicates (by wasted space):');
 		duplicates.potentialDuplicates
-			.sort((a: any, b: any) => b.wastedSpace - a.wastedSpace)
+			.sort((a, b) => b.wastedSpace - a.wastedSpace)
 			.slice(0, 10)
-			.forEach((group: any, index: number) => {
-				console.log(`\n${index + 1}. ${group.key}`);
-				console.log(`   Duplicates: ${group.duplicateCount}`);
-				console.log(`   Wasted Space: ${formatBytes(group.wastedSpace)}`);
-				group.files.slice(0, 3).forEach((file: any) => {
-					console.log(`   📄 ${file.path}`);
-				});
-				if (group.files.length > 3) {
-					console.log(`   ... and ${group.files.length - 3} more`);
-				}
+			.forEach(dup => {
+				console.log(`  ${formatBytes(dup.wastedSpace).padStart(10)} - ${dup.duplicateCount + 1} copies of ${dup.key}`);
 			});
 	}
 }
 
-async function runExport(args: string[]): Promise<void> {
-	const format = args.find((arg: string) => arg.startsWith('--format='))?.split('=')[1] || 'json';
+async function exportData(): Promise<void> {
+	console.log('📤 Exporting Media Data');
+	console.log('==========================================\n');
 
-	console.log(`📤 Exporting Media Data (${format.toUpperCase()})`);
-	console.log('=======================================\n');
+	const args = process.argv.slice(2);
+	const roomId = args.find((arg: string) => arg.startsWith('--room='))?.split('=')[1];
 
-	const exportData = await exportMediaData(format);
-	console.log(exportData);
+	const exportData = await exportMediaToCSV(roomId, 'media_export.csv');
+
+	console.log(`✅ Data exported successfully:`);
+	console.log(`  File: ${exportData}`);
+	console.log(`  Room filter: ${roomId || 'All rooms'}`);
 }
 
 async function main(): Promise<void> {
-	const [,, command, ...args] = process.argv;
+	const args = process.argv.slice(2);
+	const command = args[0];
+	const roomId = args.find((arg: string) => arg.startsWith('--room='))?.split('=')[1];
 
-	if (!command || command === 'help' || command === '--help') {
+	if (!command || command === 'help') {
 		showHelp();
 		return;
 	}
@@ -176,29 +181,33 @@ async function main(): Promise<void> {
 	try {
 		switch (command) {
 			case 'stats':
-				await runStats();
+				await showStats(roomId);
 				break;
 			case 'analyze':
-				await runAnalyze();
+				await analyzeDirectories();
 				break;
 			case 'cleanup':
-				await runCleanup(args);
+				await cleanupFiles();
 				break;
 			case 'duplicates':
-				await runDuplicates();
+				await findDuplicates();
 				break;
 			case 'export':
-				await runExport(args);
+				await exportData();
 				break;
 			default:
 				console.error(`❌ Unknown command: ${command}`);
+				console.log('Use "help" to see available commands.\n');
 				showHelp();
 				process.exit(1);
 		}
 	} catch (error) {
-		console.error(`❌ Error: ${(error as Error).message}`);
+		console.error('❌ Error executing command:', error);
 		process.exit(1);
 	}
 }
 
-main();
+// Run the CLI
+if (import.meta.url === `file://${process.argv[1]}`) {
+	main().catch(console.error);
+}

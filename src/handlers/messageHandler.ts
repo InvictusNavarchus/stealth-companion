@@ -3,7 +3,7 @@ import { loadMessages, saveMessages } from "../services/messageStorage.js";
 import { detectViewOnceContent, handleRepliedMessage } from "../handlers/viewOnceHandler.js";
 import { detectStoryContent, handleStory } from "../handlers/storyHandler.js";
 import { detectMediaContent, handleMediaMessageWrapper } from "../handlers/mediaHandler.js";
-import { MessageContext, ZaileysClient, StoredMessage } from "../../types/index.js";
+import { MessageContext, ZaileysClient, StoredViewOnceMessage, ChatType } from "../../types/index.js";
 
 /**
  * Processes and stores a received message - only saves view once messages
@@ -21,44 +21,66 @@ export async function storeMessage(ctx: MessageContext): Promise<void> {
 		const repliedData = await handleRepliedMessage(ctx);
 		
 		// Only save messages that contain view once media
-		if (repliedData && repliedData.viewOnceMediaPath) {
+		if (repliedData?.viewOnceImagePath) {
 			botLogger.database("Loading existing messages for update");
 			const messages = await loadMessages();
 			
 			// Create streamlined message object focused on view once data
-			const messageData = {
+			const messageData: StoredViewOnceMessage = {
 				// Main message metadata
 				chatId: ctx.chatId,
-				timestamp: new Date().toISOString(),
-				text: ctx.text,
+				...(ctx.channelId && { channelId: ctx.channelId }),
+				...(ctx.uniqueId && { uniqueId: ctx.uniqueId }),
+				roomId: ctx.roomId,
+				roomName: ctx.roomName,
+				senderId: ctx.senderId,
+				senderName: ctx.senderName,
+				...(ctx.senderDevice && { senderDevice: ctx.senderDevice }),
+				timestamp: ctx.timestamp,
+				...(ctx.text && { text: ctx.text }),
+				...(ctx.isFromMe !== undefined && { isFromMe: ctx.isFromMe }),
+				isGroup: ctx.isGroup,
+				chatType: ctx.chatType,
 
 				// View once media info
-				viewOnceMediaPath: repliedData.viewOnceMediaPath,
+				viewOnceMediaPath: repliedData.viewOnceImagePath,
 				viewOnceMediaType: repliedData.viewOnceMediaType,
 				
 				// Replied message data (the view once content)
-				viewOnceMessage: {
+				viewOnceMessage: ctx.replied ? {
 					chatId: ctx.replied.chatId,
-					channelId: ctx.replied.channelId,
-					uniqueId: ctx.replied.uniqueId,
+					...(ctx.replied.channelId && { channelId: ctx.replied.channelId }),
+					...(ctx.replied.uniqueId && { uniqueId: ctx.replied.uniqueId }),
 					roomId: ctx.replied.roomId,
 					roomName: ctx.replied.roomName,
 					senderId: ctx.replied.senderId,
 					senderName: ctx.replied.senderName,
-					senderDevice: ctx.replied.senderDevice,
+					...(ctx.replied.senderDevice && { senderDevice: ctx.replied.senderDevice }),
 					timestamp: ctx.replied.timestamp,
-					text: ctx.replied.text,
-					isFromMe: ctx.replied.isFromMe,
-					isViewOnce: ctx.replied.isViewOnce,
+					...(ctx.replied.text && { text: ctx.replied.text }),
+					...(ctx.replied.isFromMe !== undefined && { isFromMe: ctx.replied.isFromMe }),
+					isGroup: ctx.replied.isGroup,
+					chatType: ctx.replied.chatType,
+					...(ctx.replied.isViewOnce !== undefined && { isViewOnce: ctx.replied.isViewOnce }),
 					
 					// Media metadata
 					media: {
-						mimetype: ctx.replied.media.mimetype,
-						caption: ctx.replied.media.caption,
-						height: ctx.replied.media.height,
-						width: ctx.replied.media.width,
-						viewOnce: ctx.replied.media.viewOnce
+						mimetype: ctx.replied.media?.mimetype || '',
+						...(ctx.replied.media?.caption && { caption: ctx.replied.media.caption }),
+						...(ctx.replied.media?.height && { height: ctx.replied.media.height }),
+						...(ctx.replied.media?.width && { width: ctx.replied.media.width }),
+						...(ctx.replied.media?.viewOnce !== undefined && { viewOnce: ctx.replied.media.viewOnce })
 					}
+				} : {
+					chatId: '',
+					roomId: '',
+					roomName: '',
+					senderId: '',
+					senderName: '',
+					timestamp: 0,
+					isGroup: false,
+					chatType: 'text' as ChatType,
+					media: { mimetype: '' }
 				},
 				
 				// Context of the reply message (who replied to the view once)

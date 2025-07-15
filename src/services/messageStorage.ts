@@ -1,16 +1,16 @@
 import fs from "fs/promises";
 import { botLogger } from "../../logger.js";
-import { StoredMessage } from "../../types/index.js";
+import { AnyStoredMessage } from "../../types/index.js";
 
 /**
  * Ensures the messages JSON file exists, creates it if not
  * @returns {Promise<Array>} The existing messages array or empty array
  */
-export async function loadMessages(): Promise<StoredMessage[]> {
+export async function loadMessages(): Promise<AnyStoredMessage[]> {
 	try {
 		botLogger.fileOperation("Loading messages from JSON file", { file: "./data/messages.json" });
 		const data = await fs.readFile("./data/messages.json", "utf8");
-		const messages = JSON.parse(data) as StoredMessage[];
+		const messages = JSON.parse(data) as AnyStoredMessage[];
 		botLogger.success(`Loaded ${messages.length} messages from file`);
 		return messages;
 	} catch (error) {
@@ -23,7 +23,7 @@ export async function loadMessages(): Promise<StoredMessage[]> {
  * Saves messages array to JSON file
  * @param {Array} messages - Array of message objects to save
  */
-export async function saveMessages(messages: StoredMessage[]): Promise<void> {
+export async function saveMessages(messages: AnyStoredMessage[]): Promise<void> {
 	try {
 		botLogger.fileOperation(`Saving ${messages.length} messages to JSON file`, { file: "./data/messages.json" });
 		await fs.writeFile("./data/messages.json", JSON.stringify(messages, null, 2));

@@ -30,6 +30,8 @@ export interface MediaInfo {
   pages?: number; // For documents
   fileName?: string; // For documents
   viewOnce?: boolean;
+  buffer?(): Promise<Buffer>; // For downloading media as buffer
+  stream?(): Promise<NodeJS.ReadableStream>; // For downloading media as stream
 }
 
 export interface MessageContext {
@@ -88,9 +90,25 @@ export type ConnectionStatus =
 // STORED MESSAGE TYPES
 // ============================================================================
 
-export interface StoredMessage {
+export interface BaseStoredMessage {
+  chatId: string;
+  channelId?: string;
+  uniqueId?: string;
+  roomId: string;
+  roomName: string;
+  senderId: string;
+  senderName: string;
+  senderDevice?: string;
+  timestamp: number | string;
+  text?: string;
+  isFromMe?: boolean;
+  isGroup: boolean;
+  chatType: ChatType;
+  processedAt?: string;
+}
+
+export interface StoredMessage extends BaseStoredMessage {
   id: string;
-  timestamp: string;
   originalMessage: {
     chatId: string;
     roomId: string;
@@ -325,6 +343,40 @@ export interface DuplicateFile {
   files: string[];
   size: number;
 }
+
+// ============================================================================
+// EXTENDED STORED MESSAGE TYPES
+// ============================================================================
+
+export interface StoredMediaMessage extends BaseStoredMessage {
+  hasMedia: true;
+  mediaPath: string;
+  mediaType: ChatType;
+  media: MediaInfo;
+  contentType: string;
+  roomContext: RoomContext;
+}
+
+export interface StoredViewOnceMessage extends BaseStoredMessage {
+  viewOnceMediaPath: string;
+  viewOnceMediaType: MediaType;
+  viewOnceMessage: BaseStoredMessage & {
+    media: MediaInfo;
+  };
+  replyContext: ReplyContext;
+}
+
+export interface StoredStoryMessage extends BaseStoredMessage {
+  storyMediaPath: string | null;
+  mediaType: ChatType;
+  storyData: {
+    isStory: boolean;
+    originalChatType: ChatType;
+    mediaDownloaded: boolean;
+  };
+}
+
+export type AnyStoredMessage = StoredMessage | StoredMediaMessage | StoredViewOnceMessage | StoredStoryMessage;
 
 // ============================================================================
 // UTILITY TYPES
