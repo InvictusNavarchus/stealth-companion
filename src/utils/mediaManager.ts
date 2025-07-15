@@ -2,6 +2,7 @@ import fs from "fs/promises";
 import path from "path";
 import { loadMessages } from "../services/messageStorage.js";
 import { botLogger } from "../../logger.js";
+import { StorageStatistics, DirectoryAnalysis, CleanupResults } from "../../types/index.js";
 
 /**
  * Media Storage Management Utilities
@@ -22,7 +23,7 @@ const MEDIA_DIRECTORIES = [
  * Get comprehensive storage statistics
  * @returns {Promise<Object>} Detailed storage statistics
  */
-export async function getStorageStatistics() {
+export async function getStorageStatistics(): Promise<StorageStatistics> {
 	try {
 		const messages = await loadMessages();
 		const stats = {
@@ -112,7 +113,7 @@ export async function getStorageStatistics() {
 
 		return stats;
 	} catch (error) {
-		botLogger.error("Error getting storage statistics", { error: error.message });
+		botLogger.error("Error getting storage statistics", { error: (error as Error).message });
 		throw error;
 	}
 }
@@ -122,7 +123,7 @@ export async function getStorageStatistics() {
  * @param {string} dirPath - Directory path to analyze
  * @returns {Promise<Object>} Directory size information
  */
-export async function getDirectorySize(dirPath) {
+export async function getDirectorySize(dirPath: string): Promise<any> {
 	try {
 		let totalSize = 0;
 		let fileCount = 0;
@@ -163,7 +164,7 @@ export async function getDirectorySize(dirPath) {
 			totalSize: 0,
 			fileCount: 0,
 			formattedSize: '0 B',
-			error: error.message
+			error: (error as Error).message
 		};
 	}
 }
@@ -172,7 +173,7 @@ export async function getDirectorySize(dirPath) {
  * Get comprehensive directory analysis
  * @returns {Promise<Object>} Directory analysis for all media folders
  */
-export async function analyzeMediaDirectories() {
+export async function analyzeMediaDirectories(): Promise<DirectoryAnalysis> {
 	const analysis = {
 		overview: {
 			totalSize: 0,
@@ -208,7 +209,7 @@ export async function analyzeMediaDirectories() {
  * @param {boolean} dryRun - If true, only report what would be deleted
  * @returns {Promise<Object>} Cleanup results
  */
-export async function cleanupOldMedia(daysOld = 30, dryRun = true) {
+export async function cleanupOldMedia(daysOld: number = 30, dryRun: boolean = true): Promise<CleanupResults> {
 	const cutoffDate = new Date();
 	cutoffDate.setDate(cutoffDate.getDate() - daysOld);
 
@@ -282,7 +283,7 @@ export async function cleanupOldMedia(daysOld = 30, dryRun = true) {
  * Find duplicate media files
  * @returns {Promise<Object>} Duplicate analysis results
  */
-export async function findDuplicateMedia() {
+export async function findDuplicateMedia(): Promise<any> {
 	const duplicates = {
 		bySizeAndName: {},
 		potentialDuplicates: [],
@@ -354,7 +355,7 @@ export async function findDuplicateMedia() {
  * @param {number} bytes - Bytes to format
  * @returns {string} Formatted string
  */
-function formatBytes(bytes) {
+function formatBytes(bytes: number): string {
 	if (bytes === 0) return '0 B';
 	const k = 1024;
 	const sizes = ['B', 'KB', 'MB', 'GB'];
@@ -367,7 +368,7 @@ function formatBytes(bytes) {
  * @param {string} format - Export format ('json' or 'csv')
  * @returns {Promise<string>} Export data as string
  */
-export async function exportMediaData(format = 'json') {
+export async function exportMediaData(format: string = 'json'): Promise<string> {
 	try {
 		const messages = await loadMessages();
 		const mediaMessages = messages.filter(msg =>
