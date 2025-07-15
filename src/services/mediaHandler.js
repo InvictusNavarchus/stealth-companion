@@ -78,27 +78,73 @@ export async function saveViewOnceImage(imageBuffer, chatId, roomId, fileExtensi
 		// Sanitize roomId for directory name
 		const sanitizedRoomId = sanitizeRoomId(roomId);
 		const roomDir = path.join("./data/viewonce", sanitizedRoomId);
-		
+
 		// Ensure room directory exists
 		await ensureDirectoryExists(roomDir);
-		
+
 		const timestamp = Date.now();
 		const filename = `viewonce_${chatId}_${timestamp}.${fileExtension}`;
 		const imagePath = path.join(roomDir, filename);
-		
-		botLogger.mediaProcessing(`Saving view once image`, { 
+
+		botLogger.mediaProcessing(`Saving view once image`, {
 			chatId,
 			roomId,
-			filename, 
+			filename,
 			size: `${(imageBuffer.length / 1024).toFixed(2)}KB`,
-			extension: fileExtension 
+			extension: fileExtension
 		});
-		
+
 		await fs.writeFile(imagePath, imageBuffer);
 		botLogger.mediaSaved(`View once image saved successfully`, { path: imagePath, roomId });
 		return `./data/viewonce/${sanitizedRoomId}/${filename}`;
 	} catch (error) {
 		botLogger.error("Failed to save view once image", { error: error.message, chatId, roomId, extension: fileExtension });
+		throw error;
+	}
+}
+
+/**
+ * Saves view once media buffer to the dedicated viewonce folder organized by room and media type
+ * @param {Buffer} mediaBuffer - The media data
+ * @param {string} chatId - The message chat ID for filename
+ * @param {string} roomId - The room ID for directory organization
+ * @param {string} fileExtension - The file extension (jpg, png, mp4, mp3, etc.)
+ * @param {string} mediaType - The media type (image, video, audio)
+ * @returns {Promise<string>} The relative path to the saved view once media
+ */
+export async function saveViewOnceMedia(mediaBuffer, chatId, roomId, fileExtension = "bin", mediaType = "media") {
+	try {
+		// Sanitize roomId for directory name
+		const sanitizedRoomId = sanitizeRoomId(roomId);
+		const roomDir = path.join("./data/viewonce", sanitizedRoomId, mediaType);
+
+		// Ensure room and media type directory exists
+		await ensureDirectoryExists(roomDir);
+
+		const timestamp = Date.now();
+		const filename = `viewonce_${mediaType}_${chatId}_${timestamp}.${fileExtension}`;
+		const mediaPath = path.join(roomDir, filename);
+
+		botLogger.mediaProcessing(`Saving view once ${mediaType}`, {
+			chatId,
+			roomId,
+			filename,
+			size: `${(mediaBuffer.length / 1024).toFixed(2)}KB`,
+			extension: fileExtension,
+			mediaType
+		});
+
+		await fs.writeFile(mediaPath, mediaBuffer);
+		botLogger.mediaSaved(`View once ${mediaType} saved successfully`, { path: mediaPath, roomId, mediaType });
+		return `./data/viewonce/${sanitizedRoomId}/${mediaType}/${filename}`;
+	} catch (error) {
+		botLogger.error(`Failed to save view once ${mediaType}`, {
+			error: error.message,
+			chatId,
+			roomId,
+			extension: fileExtension,
+			mediaType
+		});
 		throw error;
 	}
 }
