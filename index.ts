@@ -8,7 +8,7 @@ import { initializeConnectionMonitoring } from "./src/handlers/connectionHandler
 /**
  * Main entry point for the Stealth Companion WhatsApp Bot
  */
-async function main() {
+async function main(): Promise<void> {
 	// Log initialization
 	botLogger.startup("Initializing Stealth Companion WhatsApp Bot", {
 		authType: CLIENT_CONFIG.authType,
@@ -34,7 +34,7 @@ async function main() {
 }
 
 // Start the application
-main().catch((error) => {
+main().catch((error: Error) => {
 	botLogger.error("Failed to start bot", { error: error.message, stack: error.stack });
 	process.exit(1);
 });

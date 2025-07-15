@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import { ReconnectConfig, ClientConfig } from '../../types/index.js';
 
 /**
  * Configuration settings for the Stealth Companion WhatsApp Bot
@@ -11,7 +12,7 @@ import 'dotenv/config';
  * @param {boolean} defaultValue - The default value if not set
  * @returns {boolean} The parsed boolean value
  */
-const parseBoolean = (value, defaultValue) => {
+const parseBoolean = (value: string | undefined, defaultValue: boolean): boolean => {
 	if (value === undefined || value === null) return defaultValue;
 	return value.toLowerCase() === 'true';
 };
@@ -22,33 +23,33 @@ const parseBoolean = (value, defaultValue) => {
  * @param {number} defaultValue - The default value if not set
  * @returns {number} The parsed integer value
  */
-const parseInteger = (value, defaultValue) => {
+const parseInteger = (value: string | undefined, defaultValue: number): number => {
 	if (value === undefined || value === null) return defaultValue;
 	const parsed = parseInt(value, 10);
 	return isNaN(parsed) ? defaultValue : parsed;
 };
 
 // Reconnection configuration
-export const RECONNECT_CONFIG = {
-	maxRetries: parseInteger(process.env.RECONNECT_MAX_RETRIES, 10),
-	retryDelay: parseInteger(process.env.RECONNECT_RETRY_DELAY, 30000),
-	connectionTimeout: parseInteger(process.env.RECONNECT_CONNECTION_TIMEOUT, 30000),
+export const RECONNECT_CONFIG: ReconnectConfig = {
+	maxRetries: parseInteger(process.env['RECONNECT_MAX_RETRIES'], 10),
+	retryDelay: parseInteger(process.env['RECONNECT_RETRY_DELAY'], 30000),
+	connectionTimeout: parseInteger(process.env['RECONNECT_CONNECTION_TIMEOUT'], 30000),
 	currentRetries: 0
 };
 
 // WhatsApp client configuration
-export const CLIENT_CONFIG = {
-	authType: process.env.CLIENT_AUTH_TYPE || "qr",
-	prefix: process.env.CLIENT_PREFIX || "/",
-	ignoreMe: parseBoolean(process.env.CLIENT_IGNORE_ME, false),
-	showLogs: parseBoolean(process.env.CLIENT_SHOW_LOGS, true),
-	autoRead: parseBoolean(process.env.CLIENT_AUTO_READ, true),
-	autoOnline: parseBoolean(process.env.CLIENT_AUTO_ONLINE, true),
-	autoPresence: parseBoolean(process.env.CLIENT_AUTO_PRESENCE, true),
-	autoRejectCall: parseBoolean(process.env.CLIENT_AUTO_REJECT_CALL, true),
-	loadLLMSchemas: parseBoolean(process.env.CLIENT_LOAD_LLM_SCHEMAS, false),
+export const CLIENT_CONFIG: ClientConfig = {
+	authType: process.env['CLIENT_AUTH_TYPE'] || "qr",
+	prefix: process.env['CLIENT_PREFIX'] || "/",
+	ignoreMe: parseBoolean(process.env['CLIENT_IGNORE_ME'], false),
+	showLogs: parseBoolean(process.env['CLIENT_SHOW_LOGS'], true),
+	autoRead: parseBoolean(process.env['CLIENT_AUTO_READ'], true),
+	autoOnline: parseBoolean(process.env['CLIENT_AUTO_ONLINE'], true),
+	autoPresence: parseBoolean(process.env['CLIENT_AUTO_PRESENCE'], true),
+	autoRejectCall: parseBoolean(process.env['CLIENT_AUTO_REJECT_CALL'], true),
+	loadLLMSchemas: parseBoolean(process.env['CLIENT_LOAD_LLM_SCHEMAS'], false),
 	database: {
-		type: process.env.DATABASE_TYPE || "sqlite",
-		connection: { url: process.env.DATABASE_URL || "./session/zaileys.db" },
+		type: process.env['DATABASE_TYPE'] || "sqlite",
+		connection: { url: process.env['DATABASE_URL'] || "./session/zaileys.db" },
 	},
 };
