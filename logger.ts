@@ -1,16 +1,22 @@
 import winston from 'winston';
+import Transport from 'winston-transport';
 import { promises as fs } from 'fs';
 import path from 'path';
+import { RoomTransportOptions, LogInfo, BotLogger, LogMetadata } from './types/index.js';
 
 /**
  * Custom Winston transport for room-based logging
  * Logs messages to separate files based on roomId
  */
-class RoomTransport extends winston.Transport {
-    constructor(opts) {
+class RoomTransport extends Transport {
+    private dirname: string;
+    private logFormat: winston.Logform.Format;
+    private _dirReady: Promise<void>;
+
+    constructor(opts: RoomTransportOptions = {}) {
         super(opts);
         this.dirname = opts.dirname || './logs/rooms';
-        this.format = opts.format || winston.format.simple();
+        this.logFormat = opts.format as winston.Logform.Format || winston.format.simple();
         // Initialize directory ready promise to handle race condition
         this._dirReady = this._ensureLogDir();
     }
@@ -19,17 +25,17 @@ class RoomTransport extends winston.Transport {
      * Ensures the log directory exists
      * @returns {Promise<void>} Promise that resolves when directory is ready
      */
-    async _ensureLogDir() {
+    private async _ensureLogDir(): Promise<void> {
         try {
             await fs.mkdir(this.dirname, { recursive: true });
         } catch (error) {
             // Check if error is due to directory already existing
-            if (error.code === 'EEXIST') {
+            if (error instanceof Error && 'code' in error && error.code === 'EEXIST') {
                 // Directory already exists, this is fine
                 return;
             }
             // For other errors like permission issues, log and rethrow
-            console.error('Failed to create log directory:', error.message);
+            console.error('Failed to create log directory:', error instanceof Error ? error.message : String(error));
             throw error;
         }
     }
@@ -39,7 +45,7 @@ class RoomTransport extends winston.Transport {
      * @param {string} roomId - The room ID to sanitize
      * @returns {string} Sanitized room ID
      */
-    _sanitizeRoomId(roomId) {
+    private _sanitizeRoomId(roomId: string): string {
         return roomId.replace(/[^a-zA-Z0-9@.-]/g, '_');
     }
 
@@ -48,7 +54,7 @@ class RoomTransport extends winston.Transport {
      * @param {Object} info - Log information object
      * @param {Function} callback - Callback function
      */
-    async log(info, callback) {
+    override async log(info: LogInfo, callback: () => void): Promise<void> {
         setImmediate(() => {
             this.emit('logged', info);
         });
@@ -61,23 +67,23 @@ class RoomTransport extends winston.Transport {
             if (info.roomId) {
                 const sanitizedRoomId = this._sanitizeRoomId(info.roomId);
                 const filename = path.join(this.dirname, `${sanitizedRoomId}.log`);
-                const formattedMessage = this.format.transform(info);
-                
+                const formattedMessage = this.logFormat.transform(info as winston.Logform.TransformableInfo);
+
                 if (formattedMessage) {
-                    const logLine = typeof formattedMessage === 'string' 
-                        ? formattedMessage 
-                        : formattedMessage[Symbol.for('message')] || JSON.stringify(formattedMessage);
-                    
+                    const logLine = typeof formattedMessage === 'string'
+                        ? formattedMessage
+                        : (formattedMessage as Record<symbol, string>)[Symbol.for('message')] || JSON.stringify(formattedMessage);
+
                     // Wait for file write to complete before calling callback
                     await fs.appendFile(filename, logLine + '\n');
                 }
             }
-            
+
             // Call callback only after successful completion
             callback();
         } catch (error) {
             this.emit('error', error);
-            callback(error);
+            callback();
         }
     }
 }
@@ -101,8 +107,8 @@ const logFormat = winston.format.combine(
  * @param {string} level - The log level
  * @returns {string} Emoji for the log level
  */
-function getEmojiForLevel(level) {
-    const emojiMap = {
+function getEmojiForLevel(level: string): string {
+    const emojiMap: Record<string, string> = {
         error: '❌',
         warn: '⚠️',
         info: 'ℹ️',
@@ -181,51 +187,51 @@ const logger = winston.createLogger({
 /**
  * Custom logger methods with specific emojis for WhatsApp bot operations
  */
-export const botLogger = {
+export const botLogger: BotLogger = {
     // Connection related
-    connection: (message, meta = {}) => logger.info(`🔗 ${message}`, meta),
-    qr: (message, meta = {}) => logger.info(`📱 ${message}`, meta),
-    
+    connection: (message: string, meta: LogMetadata = {}) => logger.info(`🔗 ${message}`, meta),
+    qr: (message: string, meta: LogMetadata = {}) => logger.info(`📱 ${message}`, meta),
+
     // Message related
-    messageReceived: (message, meta = {}) => logger.info(`📥 ${message}`, meta),
-    messageSent: (message, meta = {}) => logger.info(`📤 ${message}`, meta),
-    
+    messageReceived: (message: string, meta: LogMetadata = {}) => logger.info(`📥 ${message}`, meta),
+    messageSent: (message: string, meta: LogMetadata = {}) => logger.info(`📤 ${message}`, meta),
+
     // Media related
-    mediaProcessing: (message, meta = {}) => logger.info(`🖼️ ${message}`, meta),
-    viewOnceDetected: (message, meta = {}) => logger.info(`🕵️ ${message}`, meta),
-    mediaSaved: (message, meta = {}) => logger.info(`💾 ${message}`, meta),
-    
+    mediaProcessing: (message: string, meta: LogMetadata = {}) => logger.info(`🖼️ ${message}`, meta),
+    viewOnceDetected: (message: string, meta: LogMetadata = {}) => logger.info(`🕵️ ${message}`, meta),
+    mediaSaved: (message: string, meta: LogMetadata = {}) => logger.info(`💾 ${message}`, meta),
+
     // File operations
-    fileOperation: (message, meta = {}) => logger.info(`📁 ${message}`, meta),
-    
+    fileOperation: (message: string, meta: LogMetadata = {}) => logger.info(`📁 ${message}`, meta),
+
     // Database operations
-    database: (message, meta = {}) => logger.info(`🗄️ ${message}`, meta),
-    
+    database: (message: string, meta: LogMetadata = {}) => logger.info(`🗄️ ${message}`, meta),
+
     // Error related
-    error: (message, meta = {}) => logger.error(`❌ ${message}`, meta),
-    warning: (message, meta = {}) => logger.warn(`⚠️ ${message}`, meta),
-    
+    error: (message: string, meta: LogMetadata = {}) => logger.error(`❌ ${message}`, meta),
+    warning: (message: string, meta: LogMetadata = {}) => logger.warn(`⚠️ ${message}`, meta),
+
     // Success operations
-    success: (message, meta = {}) => logger.info(`✅ ${message}`, meta),
-    
+    success: (message: string, meta: LogMetadata = {}) => logger.info(`✅ ${message}`, meta),
+
     // General info
-    info: (message, meta = {}) => logger.info(`ℹ️ ${message}`, meta),
-    debug: (message, meta = {}) => logger.debug(`🐛 ${message}`, meta),
-    
+    info: (message: string, meta: LogMetadata = {}) => logger.info(`ℹ️ ${message}`, meta),
+    debug: (message: string, meta: LogMetadata = {}) => logger.debug(`🐛 ${message}`, meta),
+
     // Bot lifecycle
-    startup: (message, meta = {}) => logger.info(`🚀 ${message}`, meta),
-    shutdown: (message, meta = {}) => logger.info(`🛑 ${message}`, meta),
-    
+    startup: (message: string, meta: LogMetadata = {}) => logger.info(`🚀 ${message}`, meta),
+    shutdown: (message: string, meta: LogMetadata = {}) => logger.info(`🛑 ${message}`, meta),
+
     // Processing status
-    processing: (message, meta = {}) => logger.info(`⚙️ ${message}`, meta),
-    completed: (message, meta = {}) => logger.info(`✨ ${message}`, meta),
-    
+    processing: (message: string, meta: LogMetadata = {}) => logger.info(`⚙️ ${message}`, meta),
+    completed: (message: string, meta: LogMetadata = {}) => logger.info(`✨ ${message}`, meta),
+
     // Room-specific logging methods
-    roomMessage: (roomId, message, meta = {}) => logger.info(`💬 ${message}`, { ...meta, roomId }),
-    roomActivity: (roomId, message, meta = {}) => logger.info(`🔄 ${message}`, { ...meta, roomId }),
-    roomError: (roomId, message, meta = {}) => logger.error(`❌ ${message}`, { ...meta, roomId }),
-    roomWarning: (roomId, message, meta = {}) => logger.warn(`⚠️ ${message}`, { ...meta, roomId }),
-    roomInfo: (roomId, message, meta = {}) => logger.info(`ℹ️ ${message}`, { ...meta, roomId })
+    roomMessage: (roomId: string, message: string, meta: LogMetadata = {}) => logger.info(`💬 ${message}`, { ...meta, roomId }),
+    roomActivity: (roomId: string, message: string, meta: LogMetadata = {}) => logger.info(`🔄 ${message}`, { ...meta, roomId }),
+    roomError: (roomId: string, message: string, meta: LogMetadata = {}) => logger.error(`❌ ${message}`, { ...meta, roomId }),
+    roomWarning: (roomId: string, message: string, meta: LogMetadata = {}) => logger.warn(`⚠️ ${message}`, { ...meta, roomId }),
+    roomInfo: (roomId: string, message: string, meta: LogMetadata = {}) => logger.info(`ℹ️ ${message}`, { ...meta, roomId })
 };
 
 export default logger;

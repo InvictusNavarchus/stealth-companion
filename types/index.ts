@@ -3,6 +3,8 @@
  * Comprehensive type definitions for all interfaces and data structures
  */
 
+import winston from 'winston';
+
 // ============================================================================
 // ZAILEYS CLIENT TYPES
 // ============================================================================
@@ -252,7 +254,7 @@ export interface BotLogger {
 
 export interface RoomTransportOptions {
   dirname?: string;
-  format?: unknown;
+  format?: winston.Logform.Format;
 }
 
 export interface LogInfo {
