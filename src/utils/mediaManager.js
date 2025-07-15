@@ -42,7 +42,7 @@ export async function getStorageStatistics() {
 		// Process each message
 		for (const msg of messages) {
 			// Count messages with media
-			if (msg.hasMedia || msg.imagePath || msg.mediaPath || msg.viewOnceImagePath || msg.storyMediaPath) {
+			if (msg.hasMedia || msg.imagePath || msg.mediaPath || msg.viewOnceMediaPath || msg.viewOnceImagePath || msg.storyMediaPath) {
 				stats.overview.messagesWithMedia++;
 			}
 
@@ -370,8 +370,8 @@ function formatBytes(bytes) {
 export async function exportMediaData(format = 'json') {
 	try {
 		const messages = await loadMessages();
-		const mediaMessages = messages.filter(msg => 
-			msg.hasMedia || msg.imagePath || msg.mediaPath || msg.viewOnceImagePath || msg.storyMediaPath
+		const mediaMessages = messages.filter(msg =>
+			msg.hasMedia || msg.imagePath || msg.mediaPath || msg.viewOnceMediaPath || msg.viewOnceImagePath || msg.storyMediaPath
 		);
 
 		if (format === 'csv') {
@@ -398,7 +398,7 @@ export async function exportMediaData(format = 'json') {
 					escapeCsvField(msg.mediaType || msg.chatType || ''),
 					escapeCsvField(msg.contentType || ''),
 					msg.media?.fileLength || 0,
-					escapeCsvField(msg.mediaPath || msg.imagePath || msg.viewOnceImagePath || msg.storyMediaPath || ''),
+					escapeCsvField(msg.mediaPath || msg.imagePath || msg.viewOnceMediaPath || msg.viewOnceImagePath || msg.storyMediaPath || ''),
 					escapeCsvField(msg.media?.caption || msg.text || ''),
 					msg.isGroup || false
 				];

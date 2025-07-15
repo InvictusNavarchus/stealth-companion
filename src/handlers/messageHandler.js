@@ -19,8 +19,8 @@ export async function storeMessage(ctx) {
 		// Handle replied message extraction for view once messages only
 		const repliedData = await handleRepliedMessage(ctx);
 		
-		// Only save messages that contain view once images
-		if (repliedData && repliedData.viewOnceImagePath) {
+		// Only save messages that contain view once media
+		if (repliedData && repliedData.viewOnceMediaPath) {
 			botLogger.database("Loading existing messages for update");
 			const messages = await loadMessages();
 			
@@ -30,9 +30,10 @@ export async function storeMessage(ctx) {
 				chatId: ctx.chatId,
 				timestamp: new Date().toISOString(),
 				text: ctx.text,
-				
-				// View once image info
-				viewOnceImagePath: repliedData.viewOnceImagePath,
+
+				// View once media info
+				viewOnceMediaPath: repliedData.viewOnceMediaPath,
+				viewOnceMediaType: repliedData.viewOnceMediaType,
 				
 				// Replied message data (the view once content)
 				viewOnceMessage: {
@@ -76,7 +77,8 @@ export async function storeMessage(ctx) {
 			botLogger.success("View once message stored successfully", {
 				totalMessages: messages.length,
 				roomName: ctx.roomName,
-				senderName: ctx.senderName
+				senderName: ctx.senderName,
+				mediaType: repliedData.viewOnceMediaType
 			});
 		} else {
 			botLogger.debug("Message does not contain view once content, skipping storage");
