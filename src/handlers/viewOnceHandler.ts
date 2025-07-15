@@ -1,12 +1,13 @@
 import { botLogger } from "../../logger.js";
 import { saveViewOnceMedia, getMediaFileExtension } from "../services/mediaHandler.js";
+import { MessageContext, MediaType, ViewOnceData } from "../../types/index.js";
 
 /**
  * Determines the media type from context and mimetype
  * @param {Object} replied - The replied message context
  * @returns {string} The media type (image, video, audio)
  */
-function getViewOnceMediaType(replied) {
+function getViewOnceMediaType(replied: MessageContext): MediaType {
 	// First check chatType if available
 	if (replied.chatType) {
 		const chatType = replied.chatType.toLowerCase();
@@ -32,7 +33,7 @@ function getViewOnceMediaType(replied) {
  * @param {Object} ctx - The message context from Zaileys
  * @returns {boolean} True if view once content is detected, false otherwise
  */
-export function detectViewOnceContent(ctx) {
+export function detectViewOnceContent(ctx: MessageContext): boolean {
 	const hasViewOnce = ctx.replied &&
 		   ctx.replied.media &&
 		   (ctx.replied.isViewOnce ||
@@ -59,7 +60,7 @@ export function detectViewOnceContent(ctx) {
  * @param {Object} ctx - The message context from Zaileys
  * @returns {Promise<Object|null>} Object containing paths to saved media and replied message data, or null if not applicable
  */
-export async function handleRepliedMessage(ctx) {
+export async function handleRepliedMessage(ctx: MessageContext): Promise<ViewOnceData | null> {
 	// Check if this message is a reply
 	if (ctx.replied) {
 		try {
@@ -123,10 +124,10 @@ export async function handleRepliedMessage(ctx) {
 
 			return repliedData;
 		} catch (error) {
-			botLogger.error("Error processing replied message", { 
-				error: error.message,
+			botLogger.error("Error processing replied message", {
+				error: (error as Error).message,
 				chatId: ctx.replied?.chatId,
-				stack: error.stack
+				stack: (error as Error).stack
 			});
 		}
 	}

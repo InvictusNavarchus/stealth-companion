@@ -3,12 +3,13 @@ import { loadMessages, saveMessages } from "../services/messageStorage.js";
 import { detectViewOnceContent, handleRepliedMessage } from "../handlers/viewOnceHandler.js";
 import { detectStoryContent, handleStory } from "../handlers/storyHandler.js";
 import { detectMediaContent, handleMediaMessageWrapper } from "../handlers/mediaHandler.js";
+import { MessageContext, ZaileysClient, StoredMessage } from "../../types/index.js";
 
 /**
  * Processes and stores a received message - only saves view once messages
  * @param {Object} ctx - The message context from Zaileys
  */
-export async function storeMessage(ctx) {
+export async function storeMessage(ctx: MessageContext): Promise<void> {
 	try {
 		botLogger.processing("Processing message for view once content", {
 			chatId: ctx.chatId,
@@ -85,10 +86,10 @@ export async function storeMessage(ctx) {
 		}
 	} catch (error) {
 		botLogger.error("Error storing message", {
-			error: error.message,
+			error: (error as Error).message,
 			chatId: ctx.chatId,
 			roomId: ctx.roomId,
-			stack: error.stack
+			stack: (error as Error).stack
 		});
 	}
 }
@@ -98,7 +99,7 @@ export async function storeMessage(ctx) {
  * @param {Object} ctx - The message context from Zaileys
  * @param {Object} client - The WhatsApp client instance
  */
-export async function handleMessage(ctx, client) {
+export async function handleMessage(ctx: MessageContext, client: ZaileysClient): Promise<void> {
 	botLogger.messageReceived("Message received", {
 		chatId: ctx.chatId,
 		roomId: ctx.roomId,

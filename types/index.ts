@@ -10,6 +10,8 @@ import winston from 'winston';
 // ============================================================================
 
 export interface ZaileysClient {
+  on(event: "messages", callback: (ctx: MessageContext) => Promise<void>): void;
+  on(event: "connection", callback: (ctx: ConnectionContext) => Promise<void>): void;
   on(event: string, callback: (ctx: MessageContext | ConnectionContext) => Promise<void>): void;
   // Add other client methods as needed
 }
