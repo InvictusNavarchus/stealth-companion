@@ -20,7 +20,7 @@ async function main(): Promise<void> {
 	});
 
 	// Create WhatsApp client
-	const wa = new Client(CLIENT_CONFIG as any);
+	const wa = new Client(CLIENT_CONFIG);
 
 	// Initialize connection monitoring
 	initializeConnectionMonitoring(wa);

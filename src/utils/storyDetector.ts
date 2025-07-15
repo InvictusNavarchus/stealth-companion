@@ -121,7 +121,7 @@ export function shouldProcessStory(ctx: MessageContext): boolean {
 		}
 
 		// Skip our own stories if configured to do so
-		if ((ctx as any).isFromMe) {
+		if (ctx.isFromMe) {
 			botLogger.debug("Skipping own story", { senderId: ctx.senderId });
 			return false;
 		}
