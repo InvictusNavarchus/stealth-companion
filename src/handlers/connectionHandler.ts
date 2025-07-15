@@ -71,7 +71,7 @@ export async function attemptReconnection(): Promise<void> {
 		await new Promise(resolve => setTimeout(resolve, RECONNECT_CONFIG.retryDelay));
 		
 		// Create new client instance for reconnection
-		currentClient = new Client(CLIENT_CONFIG);
+		currentClient = new Client(CLIENT_CONFIG as any);
 
 		// Re-setup event listeners for the new client
 		const { setupEventListeners } = await import("./eventHandler.js");

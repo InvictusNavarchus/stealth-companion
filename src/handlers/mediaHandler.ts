@@ -2,7 +2,7 @@ import { botLogger } from "../../logger.js";
 import { loadMessages, saveMessages } from "../services/messageStorage.js";
 import { handleMediaMessage } from "../services/mediaHandler.js";
 import { shouldStoreImage } from "../config/imageConfig.js";
-import { MessageContext, ZaileysClient } from "../../types/index.js";
+import { MessageContext } from "../../types/index.js";
 
 /**
  * Converts megabytes to bytes

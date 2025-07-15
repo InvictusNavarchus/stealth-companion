@@ -39,7 +39,7 @@ export function detectRegularImageContent(ctx: MessageContext): boolean {
 			shouldProcess
 		});
 		
-		return shouldProcess;
+		return shouldProcess ?? false;
 	} catch (error) {
 		botLogger.error("Error in regular image detection", {
 			error: (error as Error).message,
@@ -115,8 +115,8 @@ export async function storeRegularImage(ctx: MessageContext): Promise<void> {
 				}
 			};
 			
-			// Add image to messages array and save
-			messages.push(imageData);
+			// Add image to messages array and save (cast to any for now)
+			(messages as any[]).push(imageData);
 			await saveMessages(messages);
 			
 			botLogger.success("Regular image stored successfully", {
