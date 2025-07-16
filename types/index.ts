@@ -78,11 +78,13 @@ export interface ConnectionContext {
   error?: Error;
 }
 
-export type ConnectionStatus = 
-  | 'connecting' 
-  | 'connected' 
-  | 'disconnected' 
-  | 'qr' 
+export type ConnectionStatus =
+  | 'connecting'
+  | 'connected'
+  | 'disconnected'
+  | 'open'      // Zaileys uses 'open' for successful connections
+  | 'close'     // Zaileys uses 'close' for disconnections
+  | 'qr'
   | 'error';
 
 // ============================================================================

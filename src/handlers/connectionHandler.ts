@@ -5,7 +5,14 @@ import { ZaileysClient, ConnectionContext } from "../../types/index.js";
 
 // Connection monitoring state
 let connectionTimeout: NodeJS.Timeout | null = null;
+let reconnectionTimeout: NodeJS.Timeout | null = null;
 let currentClient: ZaileysClient | null = null;
+let isReconnecting: boolean = false;
+let isConnected: boolean = false;
+let lastConnectionAttempt: number = 0;
+
+// Minimum time between connection attempts (prevents rapid-fire attempts)
+const MIN_CONNECTION_INTERVAL = 5000; // 5 seconds
 
 /**
  * Clears any existing connection timeout
@@ -14,7 +21,18 @@ function clearConnectionTimeout(): void {
 	if (connectionTimeout) {
 		clearTimeout(connectionTimeout);
 		connectionTimeout = null;
-		botLogger.info("Connection timeout cleared");
+		botLogger.info("ℹ️ Connection timeout cleared");
+	}
+}
+
+/**
+ * Clears any existing reconnection timeout
+ */
+function clearReconnectionTimeout(): void {
+	if (reconnectionTimeout) {
+		clearTimeout(reconnectionTimeout);
+		reconnectionTimeout = null;
+		botLogger.info("ℹ️ Reconnection timeout cleared");
 	}
 }
 
@@ -28,73 +46,120 @@ function setConnectionEstablishmentTimeout(timeoutMs: number = RECONNECT_CONFIG.
 	clearConnectionTimeout();
 
 	connectionTimeout = setTimeout(() => {
-		botLogger.warning("Connection establishment timeout reached - no 'open' status received", {
-			timeoutMs: timeoutMs,
-			currentRetries: RECONNECT_CONFIG.currentRetries
-		});
+		// Only trigger reconnection if we're not already connected and not already reconnecting
+		if (!isConnected && !isReconnecting) {
+			botLogger.warning("⚠️ Connection establishment timeout reached - no 'open' status received", {
+				timeoutMs: timeoutMs,
+				currentRetries: RECONNECT_CONFIG.currentRetries
+			});
 
-		// Trigger reconnection attempt
-		attemptReconnection();
+			// Trigger reconnection attempt
+			scheduleReconnection();
+		}
 	}, timeoutMs);
 
-	botLogger.info("Connection establishment timeout set", {
+	botLogger.info("ℹ️ Connection establishment timeout set", {
 		timeoutMs: timeoutMs,
 		attempt: RECONNECT_CONFIG.currentRetries + 1
 	});
 }
 
 /**
- * Attempts to reconnect to WhatsApp with retry logic
- * @returns {Promise<void>}
+ * Schedules a reconnection attempt with proper delay and state management
  */
-export async function attemptReconnection(): Promise<void> {
-	// Clear any existing timeout since we're manually triggering reconnection
-	clearConnectionTimeout();
+function scheduleReconnection(): void {
+	// Prevent multiple simultaneous reconnection attempts
+	if (isReconnecting) {
+		botLogger.info("ℹ️ Reconnection already in progress, skipping duplicate attempt");
+		return;
+	}
 
+	// Check if we've exceeded max retries
 	if (RECONNECT_CONFIG.currentRetries >= RECONNECT_CONFIG.maxRetries) {
-		botLogger.error("Maximum reconnection attempts reached", {
+		botLogger.error("❌ Maximum reconnection attempts reached", {
 			maxRetries: RECONNECT_CONFIG.maxRetries,
 			totalAttempts: RECONNECT_CONFIG.currentRetries
 		});
 		return;
 	}
 
+	// Enforce minimum interval between connection attempts
+	const now = Date.now();
+	const timeSinceLastAttempt = now - lastConnectionAttempt;
+	const minDelay = Math.max(0, MIN_CONNECTION_INTERVAL - timeSinceLastAttempt);
+	const totalDelay = RECONNECT_CONFIG.retryDelay + minDelay;
+
 	RECONNECT_CONFIG.currentRetries++;
-	
-	botLogger.warning(`Attempting reconnection ${RECONNECT_CONFIG.currentRetries}/${RECONNECT_CONFIG.maxRetries}`, {
-		retryDelay: `${RECONNECT_CONFIG.retryDelay / 1000}s`,
+	isReconnecting = true;
+
+	botLogger.warning(`⚠️ Attempting reconnection ${RECONNECT_CONFIG.currentRetries}/${RECONNECT_CONFIG.maxRetries}`, {
+		retryDelay: `${totalDelay / 1000}s`,
 		attempt: RECONNECT_CONFIG.currentRetries
 	});
 
+	// Clear any existing reconnection timeout
+	clearReconnectionTimeout();
+
+	reconnectionTimeout = setTimeout(async () => {
+		await performReconnection();
+	}, totalDelay);
+}
+
+/**
+ * Performs the actual reconnection attempt
+ * @returns {Promise<void>}
+ */
+async function performReconnection(): Promise<void> {
+	lastConnectionAttempt = Date.now();
+
 	try {
-		// Wait for the specified delay before attempting reconnection
-		await new Promise(resolve => setTimeout(resolve, RECONNECT_CONFIG.retryDelay));
-		
+		// Cleanup old client if it exists
+		if (currentClient) {
+			try {
+				// Attempt to properly close the old client
+				// Note: Zaileys may not have a direct close method, so we just null the reference
+				currentClient = null;
+			} catch (cleanupError) {
+				botLogger.warning("⚠️ Error during client cleanup", {
+					error: (cleanupError as Error).message
+				});
+			}
+		}
+
 		// Create new client instance for reconnection
 		currentClient = new Client(CLIENT_CONFIG as any);
 
 		// Re-setup event listeners for the new client
 		const { setupEventListeners } = await import("./eventHandler.js");
 		setupEventListeners(currentClient);
-		
+
 		// Set timeout to monitor this connection attempt
 		setConnectionEstablishmentTimeout();
-		
-		botLogger.info("Reconnection attempt initiated", {
+
+		botLogger.info("ℹ️ Reconnection attempt initiated", {
 			attempt: RECONNECT_CONFIG.currentRetries,
 			remaining: RECONNECT_CONFIG.maxRetries - RECONNECT_CONFIG.currentRetries
 		});
 
 	} catch (error) {
-		botLogger.error("Reconnection attempt failed", {
+		botLogger.error("❌ Reconnection attempt failed", {
 			error: (error as Error).message,
 			attempt: RECONNECT_CONFIG.currentRetries,
 			stack: (error as Error).stack
 		});
 
-		// Attempt another reconnection
-		await attemptReconnection();
+		// Reset reconnecting state and schedule another attempt
+		isReconnecting = false;
+		scheduleReconnection();
 	}
+}
+
+/**
+ * Legacy function for backward compatibility - now delegates to scheduleReconnection
+ * @returns {Promise<void>}
+ */
+export async function attemptReconnection(): Promise<void> {
+	scheduleReconnection();
 }
 
 /**
@@ -102,41 +167,78 @@ export async function attemptReconnection(): Promise<void> {
  * @param {Object} ctx - The connection context from Zaileys
  */
 export async function handleConnection(ctx: ConnectionContext): Promise<void> {
-	botLogger.info(`Connection status change: ${ctx.status}`, {
+	botLogger.info(`ℹ️ Connection status change: ${ctx.status}`, {
 		status: ctx.status,
 		currentRetries: RECONNECT_CONFIG.currentRetries
 	});
 
 	switch (ctx.status) {
 		case 'connecting':
-			botLogger.connection("Connecting to WhatsApp...");
-			// Set timeout to monitor this connection attempt
-			setConnectionEstablishmentTimeout();
+			// Only set timeout if we're not already connected and not in a reconnection loop
+			if (!isConnected && !isReconnecting) {
+				botLogger.connection("🔗 Connecting to WhatsApp...");
+				setConnectionEstablishmentTimeout();
+			} else if (isReconnecting) {
+				botLogger.connection("🔗 Connecting to WhatsApp...");
+				// Don't set new timeout during reconnection, existing one should handle it
+			}
 			break;
 
-		case 'connected':
-			botLogger.success("Successfully connected to WhatsApp!");
-			// Clear timeout since connection succeeded
+		case 'open': // Zaileys uses 'open' for successful connections, not 'connected'
+			botLogger.success("✅ Successfully connected to WhatsApp!");
+			// Clear all timeouts since connection succeeded
 			clearConnectionTimeout();
-			// Reset retry counter on successful connection
+			clearReconnectionTimeout();
+			// Reset state
+			isConnected = true;
+			isReconnecting = false;
+			RECONNECT_CONFIG.currentRetries = 0;
+			break;
+
+		case 'close': // Zaileys uses 'close' for disconnections, not 'disconnected'
+			botLogger.warning("⚠️ WhatsApp connection closed");
+			// Update state
+			isConnected = false;
+			// Clear any existing timeouts
+			clearConnectionTimeout();
+			clearReconnectionTimeout();
+			// Schedule reconnection if not already in progress
+			if (!isReconnecting) {
+				scheduleReconnection();
+			}
+			break;
+
+		// Handle legacy status names for backward compatibility
+		case 'connected':
+			// Treat same as 'open'
+			botLogger.success("✅ Successfully connected to WhatsApp!");
+			clearConnectionTimeout();
+			clearReconnectionTimeout();
+			isConnected = true;
+			isReconnecting = false;
 			RECONNECT_CONFIG.currentRetries = 0;
 			break;
 
 		case 'disconnected':
-			botLogger.warning("WhatsApp connection closed");
-			// Clear any existing timeout
+			// Treat same as 'close'
+			botLogger.warning("⚠️ WhatsApp connection closed");
+			isConnected = false;
 			clearConnectionTimeout();
-			// Attempt reconnection after connection closes
-			await attemptReconnection();
+			clearReconnectionTimeout();
+			if (!isReconnecting) {
+				scheduleReconnection();
+			}
 			break;
 
 		default:
-			// Handle any other connection states (like failed, timeout, etc.)
-			botLogger.warning(`Unhandled connection status: ${ctx.status}`);
-			// For any non-open status, we should consider it a failed connection
-			// Clear existing timeout and attempt reconnection
-			clearConnectionTimeout();
-			await attemptReconnection();
+			// Handle any other connection states
+			botLogger.warning(`⚠️ Unhandled connection status: ${ctx.status}`);
+			// For unknown status, only attempt reconnection if we're not connected
+			if (!isConnected && !isReconnecting) {
+				clearConnectionTimeout();
+				clearReconnectionTimeout();
+				scheduleReconnection();
+			}
 			break;
 	}
 }
@@ -147,6 +249,34 @@ export async function handleConnection(ctx: ConnectionContext): Promise<void> {
  */
 export function initializeConnectionMonitoring(client: ZaileysClient): void {
 	currentClient = client;
-	// Connection timeout will be set when handleConnection processes the 'connecting' status
-	botLogger.info("Connection monitoring initialized for new client");
+	// Reset connection state
+	isConnected = false;
+	isReconnecting = false;
+	RECONNECT_CONFIG.currentRetries = 0;
+	lastConnectionAttempt = Date.now();
+
+	// Clear any existing timeouts
+	clearConnectionTimeout();
+	clearReconnectionTimeout();
+
+	botLogger.info("ℹ️ Connection monitoring initialized for new client");
+}
+
+/**
+ * Gets the current connection state for debugging/monitoring
+ */
+export function getConnectionState(): {
+	isConnected: boolean;
+	isReconnecting: boolean;
+	currentRetries: number;
+	hasActiveTimeout: boolean;
+	hasActiveReconnectionTimeout: boolean;
+} {
+	return {
+		isConnected,
+		isReconnecting,
+		currentRetries: RECONNECT_CONFIG.currentRetries,
+		hasActiveTimeout: connectionTimeout !== null,
+		hasActiveReconnectionTimeout: reconnectionTimeout !== null
+	};
 }
