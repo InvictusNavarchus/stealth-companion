@@ -10,9 +10,12 @@ let currentClient: ZaileysClient | null = null;
 let isReconnecting: boolean = false;
 let isConnected: boolean = false;
 let lastConnectionAttempt: number = 0;
+let lastConnectingEvent: number = 0;
 
 // Minimum time between connection attempts (prevents rapid-fire attempts)
 const MIN_CONNECTION_INTERVAL = 5000; // 5 seconds
+// Minimum time between processing 'connecting' events (prevents duplicate timeout setups)
+const MIN_CONNECTING_EVENT_INTERVAL = 1000; // 1 second
 
 /**
  * Clears any existing connection timeout
@@ -174,13 +177,26 @@ export async function handleConnection(ctx: ConnectionContext): Promise<void> {
 
 	switch (ctx.status) {
 		case 'connecting':
-			// Only set timeout if we're not already connected and not in a reconnection loop
-			if (!isConnected && !isReconnecting) {
-				botLogger.connection("🔗 Connecting to WhatsApp...");
+			const now = Date.now();
+			const timeSinceLastConnectingEvent = now - lastConnectingEvent;
+
+			// Prevent processing multiple rapid 'connecting' events
+			if (timeSinceLastConnectingEvent < MIN_CONNECTING_EVENT_INTERVAL) {
+				botLogger.info("ℹ️ Ignoring rapid 'connecting' event", {
+					timeSinceLastEvent: `${timeSinceLastConnectingEvent}ms`,
+					minInterval: `${MIN_CONNECTING_EVENT_INTERVAL}ms`
+				});
+				return; // Exit early to prevent duplicate processing
+			}
+
+			lastConnectingEvent = now;
+			botLogger.connection("🔗 Connecting to WhatsApp...");
+
+			// Only set timeout if we don't already have one active
+			if (!connectionTimeout && !isConnected) {
 				setConnectionEstablishmentTimeout();
-			} else if (isReconnecting) {
-				botLogger.connection("🔗 Connecting to WhatsApp...");
-				// Don't set new timeout during reconnection, existing one should handle it
+			} else if (connectionTimeout) {
+				botLogger.info("ℹ️ Connection timeout already active, not setting new one");
 			}
 			break;
 
@@ -254,6 +270,7 @@ export function initializeConnectionMonitoring(client: ZaileysClient): void {
 	isReconnecting = false;
 	RECONNECT_CONFIG.currentRetries = 0;
 	lastConnectionAttempt = Date.now();
+	lastConnectingEvent = 0;
 
 	// Clear any existing timeouts
 	clearConnectionTimeout();
@@ -271,12 +288,18 @@ export function getConnectionState(): {
 	currentRetries: number;
 	hasActiveTimeout: boolean;
 	hasActiveReconnectionTimeout: boolean;
+	lastConnectionAttempt: number;
+	lastConnectingEvent: number;
+	timeSinceLastConnectingEvent: number;
 } {
 	return {
 		isConnected,
 		isReconnecting,
 		currentRetries: RECONNECT_CONFIG.currentRetries,
 		hasActiveTimeout: connectionTimeout !== null,
-		hasActiveReconnectionTimeout: reconnectionTimeout !== null
+		hasActiveReconnectionTimeout: reconnectionTimeout !== null,
+		lastConnectionAttempt,
+		lastConnectingEvent,
+		timeSinceLastConnectingEvent: Date.now() - lastConnectingEvent
 	};
 }

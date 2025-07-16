@@ -24,6 +24,11 @@ Based on the connection logs provided, several critical issues were identified i
 - **Cause**: Missing state variables for connection status
 - **Impact**: Multiple simultaneous connection attempts
 
+### 6. **Multiple Rapid 'connecting' Events**
+- **Problem**: Server fires multiple 'connecting' events in rapid succession
+- **Cause**: WhatsApp server behavior during connection establishment
+- **Impact**: Multiple timeout setups, duplicate processing, log spam
+
 ### 5. **Ineffective Cleanup**
 - **Problem**: Old client instances weren't properly cleaned up
 - **Cause**: No cleanup logic when creating new clients
@@ -64,10 +69,20 @@ let reconnectionTimeout: NodeJS.Timeout | null = null;
 - Prevents duplicate reconnection attempts
 - Proper client cleanup before creating new instances
 
-### 6. **Better Logging**
+### 6. **Rapid 'connecting' Event Protection**
+```typescript
+const MIN_CONNECTING_EVENT_INTERVAL = 1000; // 1 second
+let lastConnectingEvent: number = 0;
+```
+- Prevents processing multiple rapid 'connecting' events
+- Only sets connection timeout once per connection attempt
+- Reduces log spam and duplicate processing
+
+### 7. **Better Logging**
 - Added emoji prefixes for better log readability
 - More descriptive log messages
 - Consistent logging format
+- Logs ignored rapid events for debugging
 
 ## 🔧 Key Functions
 
