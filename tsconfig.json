@@ -1,0 +1,91 @@
+{
+  "compilerOptions": {
+    /* Language and Environment */
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM"],
+    "module": "ESNext",
+    "moduleResolution": "Node",
+    "allowJs": false,
+    "checkJs": false,
+    "jsx": "preserve",
+    
+    /* Modules */
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"],
+      "@config/*": ["src/config/*"],
+      "@handlers/*": ["src/handlers/*"],
+      "@services/*": ["src/services/*"],
+      "@utils/*": ["src/utils/*"]
+    },
+    "rootDir": ".",
+    "typeRoots": ["./node_modules/@types", "./types"],
+    "types": ["node"],
+    "resolveJsonModule": true,
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    
+    /* Emit */
+    "declaration": true,
+    "declarationMap": true,
+    "emitDeclarationOnly": false,
+    "outDir": "./dist",
+    "removeComments": false,
+    "sourceMap": true,
+    "inlineSourceMap": false,
+    "inlineSources": false,
+    "importHelpers": false,
+    "downlevelIteration": false,
+    "preserveConstEnums": true,
+    "preserveValueImports": false,
+    
+    /* Interop Constraints */
+    "isolatedModules": true,
+    "preserveSymlinks": false,
+    
+    /* Type Checking - 100% STRICT MODE */
+    "strict": true,
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "strictFunctionTypes": true,
+    "strictBindCallApply": true,
+    "strictPropertyInitialization": true,
+    "noImplicitThis": true,
+    "useUnknownInCatchVariables": true,
+    "alwaysStrict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "exactOptionalPropertyTypes": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "noPropertyAccessFromIndexSignature": true,
+    
+    /* Completeness */
+    "skipDefaultLibCheck": false,
+    "skipLibCheck": false
+  },
+  "include": [
+    "src/**/*",
+    "index.ts",
+    "logger.ts",
+    "mediaManager.ts",
+    "types/**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "logs",
+    "data",
+    "session",
+    "**/*.js",
+    "**/*.test.ts",
+    "**/*.spec.ts"
+  ],
+  "ts-node": {
+    "esm": true,
+    "experimentalSpecifierResolution": "node"
+  }
+}

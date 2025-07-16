@@ -7,7 +7,7 @@ import { botLogger } from "../../logger.js";
  * @param {string} roomId - The room ID to sanitize
  * @returns {string} Sanitized room ID safe for filesystem use
  */
-function sanitizeRoomId(roomId) {
+function sanitizeRoomId(roomId: string): string {
 	return roomId.replace(/[^a-zA-Z0-9@.-]/g, '_');
 }
 
@@ -16,12 +16,15 @@ function sanitizeRoomId(roomId) {
  * @param {string} dirPath - The directory path to ensure exists
  * @returns {Promise<void>}
  */
-async function ensureDirectoryExists(dirPath) {
+async function ensureDirectoryExists(dirPath: string): Promise<void> {
 	try {
 		await fs.mkdir(dirPath, { recursive: true });
 	} catch (error) {
-		if (error.code !== 'EEXIST') {
-			botLogger.error("Failed to create directory", { error: error.message, dirPath });
+		if ((error as any).code !== 'EEXIST') {
+			botLogger.error("Failed to create directory", { 
+				error: error instanceof Error ? error.message : String(error), 
+				dirPath 
+			});
 			throw error;
 		}
 	}
@@ -35,7 +38,7 @@ async function ensureDirectoryExists(dirPath) {
  * @param {string} fileExtension - The file extension (jpg, png, etc.)
  * @returns {Promise<string>} The relative path to the saved image
  */
-export async function saveImage(imageBuffer, chatId, roomId, fileExtension = "jpg") {
+export async function saveImage(imageBuffer: Buffer, chatId: string, roomId: string, fileExtension: string = "jpg"): Promise<string> {
 	try {
 		// Sanitize roomId for directory name
 		const sanitizedRoomId = sanitizeRoomId(roomId);
@@ -60,7 +63,12 @@ export async function saveImage(imageBuffer, chatId, roomId, fileExtension = "jp
 		botLogger.mediaSaved(`Image saved successfully`, { path: imagePath, roomId });
 		return `./data/images/${sanitizedRoomId}/${filename}`;
 	} catch (error) {
-		botLogger.error("Failed to save image", { error: error.message, chatId, roomId, extension: fileExtension });
+		botLogger.error("Failed to save image", { 
+			error: error instanceof Error ? error.message : String(error), 
+			chatId, 
+			roomId, 
+			extension: fileExtension 
+		});
 		throw error;
 	}
 }
@@ -73,7 +81,7 @@ export async function saveImage(imageBuffer, chatId, roomId, fileExtension = "jp
  * @param {string} fileExtension - The file extension (jpg, png, etc.)
  * @returns {Promise<string>} The relative path to the saved view once image
  */
-export async function saveViewOnceImage(imageBuffer, chatId, roomId, fileExtension = "jpg") {
+export async function saveViewOnceImage(imageBuffer: Buffer, chatId: string, roomId: string, fileExtension: string = "jpg"): Promise<string> {
 	try {
 		// Sanitize roomId for directory name
 		const sanitizedRoomId = sanitizeRoomId(roomId);
@@ -98,7 +106,12 @@ export async function saveViewOnceImage(imageBuffer, chatId, roomId, fileExtensi
 		botLogger.mediaSaved(`View once image saved successfully`, { path: imagePath, roomId });
 		return `./data/viewonce/${sanitizedRoomId}/${filename}`;
 	} catch (error) {
-		botLogger.error("Failed to save view once image", { error: error.message, chatId, roomId, extension: fileExtension });
+		botLogger.error("Failed to save view once image", { 
+			error: error instanceof Error ? error.message : String(error), 
+			chatId, 
+			roomId, 
+			extension: fileExtension 
+		});
 		throw error;
 	}
 }
@@ -112,7 +125,7 @@ export async function saveViewOnceImage(imageBuffer, chatId, roomId, fileExtensi
  * @param {string} mediaType - The media type (image, video, audio)
  * @returns {Promise<string>} The relative path to the saved view once media
  */
-export async function saveViewOnceMedia(mediaBuffer, chatId, roomId, fileExtension = "bin", mediaType = "media") {
+export async function saveViewOnceMedia(mediaBuffer: Buffer, chatId: string, roomId: string, fileExtension: string = "bin", mediaType: string = "media"): Promise<string> {
 	try {
 		// Sanitize roomId for directory name
 		const sanitizedRoomId = sanitizeRoomId(roomId);
@@ -139,7 +152,7 @@ export async function saveViewOnceMedia(mediaBuffer, chatId, roomId, fileExtensi
 		return `./data/viewonce/${sanitizedRoomId}/${mediaType}/${filename}`;
 	} catch (error) {
 		botLogger.error(`Failed to save view once ${mediaType}`, {
-			error: error.message,
+			error: error instanceof Error ? error.message : String(error),
 			chatId,
 			roomId,
 			extension: fileExtension,
@@ -157,7 +170,7 @@ export async function saveViewOnceMedia(mediaBuffer, chatId, roomId, fileExtensi
  * @param {string} mediaType - The media type (image, video, audio, etc.)
  * @returns {Promise<string>} The relative path to the saved story media
  */
-export async function saveStoryMedia(mediaBuffer, senderId, fileExtension = "jpg", mediaType = "image") {
+export async function saveStoryMedia(mediaBuffer: Buffer, senderId: string, fileExtension: string = "jpg", mediaType: string = "image"): Promise<string> {
 	try {
 		// Sanitize senderId for directory name
 		const sanitizedSenderId = sanitizeRoomId(senderId);
@@ -181,9 +194,8 @@ export async function saveStoryMedia(mediaBuffer, senderId, fileExtension = "jpg
 		await fs.writeFile(mediaPath, mediaBuffer);
 		botLogger.mediaSaved(`Story ${mediaType} saved successfully`, { path: mediaPath, senderId });
 		return `./data/stories/${sanitizedSenderId}/${filename}`;
-	} catch (error) {
-		botLogger.error(`Failed to save story ${mediaType}`, { 
-			error: error.message, 
+	} catch (error) {		botLogger.error(`Failed to save story ${mediaType}`, {
+			error: error instanceof Error ? error.message : String(error),
 			senderId, 
 			extension: fileExtension,
 			mediaType 
@@ -198,14 +210,14 @@ export async function saveStoryMedia(mediaBuffer, senderId, fileExtension = "jpg
  * @param {string} mimetype - The mimetype of the media
  * @returns {string} The appropriate file extension
  */
-export function getMediaFileExtension(chatType, mimetype) {
+export function getMediaFileExtension(chatType: string, mimetype?: string): string {
 	try {
 		// Extract extension from mimetype if available
 		if (mimetype) {
 			// Handle mimetypes with additional parameters (e.g., "audio/ogg; codecs=opus")
-			const baseMimetype = mimetype.split(';')[0].trim();
+			const baseMimetype = mimetype.split(';')[0]?.trim();
 
-			const mimeExtensionMap = {
+			const mimeExtensionMap: Record<string, string> = {
 				'image/jpeg': 'jpg',
 				'image/jpg': 'jpg',
 				'image/png': 'png',
@@ -220,19 +232,21 @@ export function getMediaFileExtension(chatType, mimetype) {
 				'audio/wav': 'wav'
 			};
 
-			if (mimeExtensionMap[baseMimetype]) {
+			if (baseMimetype && mimeExtensionMap[baseMimetype]) {
 				return mimeExtensionMap[baseMimetype];
 			}
 
 			// Fallback: try to extract from mimetype string
-			const parts = baseMimetype.split('/');
-			if (parts.length === 2) {
-				return parts[1];
+			if (baseMimetype) {
+				const parts = baseMimetype.split('/');
+				if (parts.length === 2 && parts[1]) {
+					return parts[1];
+				}
 			}
 		}
 		
 		// Fallback based on chatType
-		const typeExtensionMap = {
+		const typeExtensionMap: Record<string, string> = {
 			'image': 'jpg',
 			'video': 'mp4',
 			'audio': 'mp3',
@@ -243,7 +257,7 @@ export function getMediaFileExtension(chatType, mimetype) {
 		return typeExtensionMap[chatType] || 'bin';
 	} catch (error) {
 		botLogger.error("Error determining file extension", {
-			error: error.message,
+			error: error instanceof Error ? error.message : String(error),
 			chatType,
 			mimetype
 		});
@@ -256,7 +270,7 @@ export function getMediaFileExtension(chatType, mimetype) {
  * @param {Object} ctx - The message context from Zaileys
  * @returns {Promise<string|null>} The path to the saved image or null if not applicable
  */
-export async function handleImageMessage(ctx) {
+export async function handleImageMessage(ctx: any) {
 	try {
 		// Only process image messages that have media
 		if (ctx.chatType === 'image' && ctx.media) {
@@ -290,10 +304,10 @@ export async function handleImageMessage(ctx) {
 		return null;
 	} catch (error) {
 		botLogger.error("Failed to handle image message", {
-			error: error.message,
+			error: error instanceof Error ? error.message : String(error),
 			chatId: ctx.chatId,
 			roomId: ctx.roomId,
-			stack: error.stack
+			stack: error instanceof Error ? error.stack : undefined
 		});
 		return null;
 	}
@@ -304,7 +318,7 @@ export async function handleImageMessage(ctx) {
  * @param {Object} ctx - The message context from Zaileys
  * @returns {Promise<string|null>} The path to the saved media or null if not applicable
  */
-export async function handleMediaMessage(ctx) {
+export async function handleMediaMessage(ctx: any) {
 	try {
 		// Support multiple media types
 		const supportedTypes = ['image', 'video', 'document', 'audio', 'voice'];
@@ -348,11 +362,11 @@ export async function handleMediaMessage(ctx) {
 		return null;
 	} catch (error) {
 		botLogger.error(`Failed to handle ${ctx.chatType} message`, {
-			error: error.message,
+			error: error instanceof Error ? error.message : String(error),
 			chatId: ctx.chatId,
 			roomId: ctx.roomId,
 			mediaType: ctx.chatType,
-			stack: error.stack
+			stack: error instanceof Error ? error.stack : undefined
 		});
 		return null;
 	}
@@ -367,7 +381,7 @@ export async function handleMediaMessage(ctx) {
  * @param {string} mediaType - The media type (video, audio, document, etc.)
  * @returns {Promise<string>} The relative path to the saved media
  */
-export async function saveMedia(mediaBuffer, chatId, roomId, fileExtension = "bin", mediaType = "media") {
+export async function saveMedia(mediaBuffer: Buffer, chatId: string, roomId: string, fileExtension = "bin", mediaType = "media") {
 	try {
 		// Sanitize roomId for directory name
 		const sanitizedRoomId = sanitizeRoomId(roomId);
@@ -394,7 +408,7 @@ export async function saveMedia(mediaBuffer, chatId, roomId, fileExtension = "bi
 		return `./data/media/${sanitizedRoomId}/${mediaType}/${filename}`;
 	} catch (error) {
 		botLogger.error(`Failed to save ${mediaType}`, { 
-			error: error.message, 
+			error: error instanceof Error ? error.message : String(error), 
 			chatId, 
 			roomId, 
 			extension: fileExtension, 

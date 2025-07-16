@@ -1,14 +1,15 @@
 import { botLogger } from "../../logger.js";
 import { loadMessages, saveMessages } from "../services/messageStorage.js";
-import { handleImageMessage, getMediaFileExtension } from "../services/mediaHandler.js";
+import { handleImageMessage } from "../services/mediaHandler.js";
 import { shouldStoreImage } from "../config/imageConfig.js";
+import { MessageContext } from "../../types/index.js";
 
 /**
  * Detects if a message contains regular image content (not view-once or story)
  * @param {Object} ctx - The message context from Zaileys
  * @returns {boolean} True if regular image content is detected, false otherwise
  */
-export function detectRegularImageContent(ctx) {
+export function detectRegularImageContent(ctx: MessageContext): boolean {
 	try {
 		// Check if it's an image message with media
 		const isImage = ctx.chatType === 'image' && ctx.media;
@@ -38,10 +39,10 @@ export function detectRegularImageContent(ctx) {
 			shouldProcess
 		});
 		
-		return shouldProcess;
+		return shouldProcess ?? false;
 	} catch (error) {
 		botLogger.error("Error in regular image detection", {
-			error: error.message,
+			error: (error as Error).message,
 			chatId: ctx.chatId,
 			chatType: ctx.chatType
 		});
@@ -53,7 +54,7 @@ export function detectRegularImageContent(ctx) {
  * Processes and stores a regular image message
  * @param {Object} ctx - The message context from Zaileys
  */
-export async function storeRegularImage(ctx) {
+export async function storeRegularImage(ctx: MessageContext): Promise<void> {
 	try {
 		botLogger.processing("Processing regular image message", {
 			chatId: ctx.chatId,
@@ -93,13 +94,13 @@ export async function storeRegularImage(ctx) {
 				imagePath: imagePath,
 				
 				// Media metadata
-				media: {
+				media: ctx.media ? {
 					mimetype: ctx.media.mimetype,
 					caption: ctx.media.caption,
 					height: ctx.media.height,
 					width: ctx.media.width,
 					fileLength: ctx.media.fileLength
-				},
+				} : null,
 				
 				// Processing metadata
 				processedAt: new Date().toISOString(),
@@ -114,8 +115,8 @@ export async function storeRegularImage(ctx) {
 				}
 			};
 			
-			// Add image to messages array and save
-			messages.push(imageData);
+			// Add image to messages array and save (cast to any for now)
+			(messages as any[]).push(imageData);
 			await saveMessages(messages);
 			
 			botLogger.success("Regular image stored successfully", {
@@ -129,11 +130,11 @@ export async function storeRegularImage(ctx) {
 		}
 	} catch (error) {
 		botLogger.error("Error storing regular image", {
-			error: error.message,
+			error: (error as Error).message,
 			chatId: ctx.chatId,
 			roomId: ctx.roomId,
 			roomName: ctx.roomName,
-			stack: error.stack
+			stack: (error as Error).stack
 		});
 	}
 }
@@ -141,9 +142,9 @@ export async function storeRegularImage(ctx) {
 /**
  * Handles incoming regular image messages
  * @param {Object} ctx - The message context from Zaileys
- * @param {Object} client - The WhatsApp client instance
+ * @param {Object} _client - The WhatsApp client instance (unused)
  */
-export async function handleRegularImageMessage(ctx, client) {
+export async function handleRegularImageMessage(ctx: MessageContext, _client?: any): Promise<void> {
 	botLogger.messageReceived("Regular image message received", {
 		chatId: ctx.chatId,
 		roomId: ctx.roomId,

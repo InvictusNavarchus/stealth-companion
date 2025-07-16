@@ -1,17 +1,21 @@
 import { botLogger } from "../../logger.js";
 import { saveViewOnceMedia, getMediaFileExtension } from "../services/mediaHandler.js";
+import { MessageContext, MediaType, ViewOnceData } from "../../types/index.js";
 
 /**
  * Determines the media type from context and mimetype
  * @param {Object} replied - The replied message context
  * @returns {string} The media type (image, video, audio)
  */
-function getViewOnceMediaType(replied) {
+function getViewOnceMediaType(replied: MessageContext): MediaType {
 	// First check chatType if available
 	if (replied.chatType) {
 		const chatType = replied.chatType.toLowerCase();
-		if (['image', 'video', 'audio', 'voice'].includes(chatType)) {
-			return chatType === 'voice' ? 'audio' : chatType;
+		if (['image', 'video', 'audio'].includes(chatType)) {
+			return chatType as MediaType;
+		}
+		if (chatType === 'voice') {
+			return 'audio';
 		}
 	}
 
@@ -32,26 +36,26 @@ function getViewOnceMediaType(replied) {
  * @param {Object} ctx - The message context from Zaileys
  * @returns {boolean} True if view once content is detected, false otherwise
  */
-export function detectViewOnceContent(ctx) {
+export function detectViewOnceContent(ctx: MessageContext): boolean {
 	const hasViewOnce = ctx.replied &&
 		   ctx.replied.media &&
 		   (ctx.replied.isViewOnce ||
 			ctx.replied.media.viewOnce ||
 			ctx.replied.chatType === 'viewOnce');
 
-	if (hasViewOnce) {
+	if (hasViewOnce && ctx.replied) {
 		const mediaType = getViewOnceMediaType(ctx.replied);
 		botLogger.viewOnceDetected("View once content detected in replied message", {
-			chatId: ctx.replied?.chatId,
-			chatType: ctx.replied?.chatType,
+			chatId: ctx.replied.chatId,
+			chatType: ctx.replied.chatType,
 			mediaType: mediaType,
-			isViewOnce: ctx.replied?.isViewOnce,
-			mediaViewOnce: ctx.replied?.media?.viewOnce,
-			mimetype: ctx.replied?.media?.mimetype
+			isViewOnce: ctx.replied.isViewOnce,
+			mediaViewOnce: ctx.replied.media?.viewOnce,
+			mimetype: ctx.replied.media?.mimetype
 		});
 	}
 
-	return hasViewOnce;
+	return !!hasViewOnce;
 }
 
 /**
@@ -59,7 +63,7 @@ export function detectViewOnceContent(ctx) {
  * @param {Object} ctx - The message context from Zaileys
  * @returns {Promise<Object|null>} Object containing paths to saved media and replied message data, or null if not applicable
  */
-export async function handleRepliedMessage(ctx) {
+export async function handleRepliedMessage(ctx: MessageContext): Promise<ViewOnceData | null> {
 	// Check if this message is a reply
 	if (ctx.replied) {
 		try {
@@ -68,23 +72,6 @@ export async function handleRepliedMessage(ctx) {
 				roomId: ctx.replied.roomId,
 				hasMedia: !!ctx.replied.media
 			});
-
-			const repliedData = {
-				chatId: ctx.replied.chatId,
-				roomId: ctx.replied.roomId,
-				senderId: ctx.replied.senderId,
-				roomName: ctx.replied.roomName,
-				senderName: ctx.replied.senderName,
-				text: ctx.replied.text,
-				chatType: ctx.replied.chatType,
-				isGroup: ctx.replied.isGroup,
-				isStory: ctx.replied.isStory,
-				isEdited: ctx.replied.isEdited,
-				isForwarded: ctx.replied.isForwarded,
-				imagePath: null,
-				viewOnceMediaPath: null,
-				viewOnceMediaType: null
-			};
 
 			// Check if the replied message has media
 			if (ctx.replied.media) {
@@ -100,33 +87,44 @@ export async function handleRepliedMessage(ctx) {
 						mimetype: ctx.replied.media.mimetype
 					});
 
-					const mediaBuffer = await ctx.replied.media.buffer();
-					const fileExtension = getMediaFileExtension(ctx.replied.chatType, ctx.replied.media.mimetype);
-					const viewOncePath = await saveViewOnceMedia(mediaBuffer, ctx.replied.chatId, ctx.replied.roomId, fileExtension, mediaType);
+					if (ctx.replied.media.buffer) {
+						const mediaBuffer = await ctx.replied.media.buffer();
+						const fileExtension = getMediaFileExtension(ctx.replied.chatType, ctx.replied.media.mimetype);
+						const viewOncePath = await saveViewOnceMedia(mediaBuffer, ctx.replied.chatId, ctx.replied.roomId, fileExtension, mediaType);
 
-					repliedData.viewOnceMediaPath = viewOncePath;
-					repliedData.viewOnceMediaType = mediaType;
+						const viewOnceData: ViewOnceData = {
+							viewOnceImagePath: viewOncePath,
+							viewOnceMediaType: mediaType,
+							originalMimetype: ctx.replied.media.mimetype,
+							...(ctx.replied.media.caption && { originalCaption: ctx.replied.media.caption }),
+							mediaMetadata: {
+								...(ctx.replied.media.height && { height: ctx.replied.media.height }),
+								...(ctx.replied.media.width && { width: ctx.replied.media.width }),
+								...(ctx.replied.media.fileLength && { fileLength: ctx.replied.media.fileLength }),
+								...(ctx.replied.media.duration && { duration: ctx.replied.media.duration }),
+								...(ctx.replied.media.pages && { pages: ctx.replied.media.pages }),
+								...(ctx.replied.media.fileName && { fileName: ctx.replied.media.fileName })
+							}
+						};
 
-					botLogger.success(`View once ${mediaType} extracted and saved`, {
-						path: viewOncePath,
-						roomId: ctx.replied.roomId,
-						mediaType: mediaType,
-						size: `${(mediaBuffer.length / 1024).toFixed(2)}KB`
-					});
+						botLogger.success(`View once ${mediaType} extracted and saved`, {
+							path: viewOncePath,
+							roomId: ctx.replied.roomId,
+							mediaType: mediaType,
+							size: `${(mediaBuffer.length / 1024).toFixed(2)}KB`
+						});
+
+						return viewOnceData;
+					}
 				}
 			}
 
-			botLogger.completed("Replied message processing completed", {
-				hasViewOnceMedia: !!repliedData.viewOnceMediaPath,
-				mediaType: repliedData.viewOnceMediaType
-			});
-
-			return repliedData;
+			botLogger.completed("Replied message processing completed - no view once media found");
 		} catch (error) {
-			botLogger.error("Error processing replied message", { 
-				error: error.message,
+			botLogger.error("Error processing replied message", {
+				error: error instanceof Error ? error.message : String(error),
 				chatId: ctx.replied?.chatId,
-				stack: error.stack
+				stack: error instanceof Error ? error.stack : undefined
 			});
 		}
 	}
