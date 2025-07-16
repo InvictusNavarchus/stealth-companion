@@ -176,7 +176,7 @@ export async function handleConnection(ctx: ConnectionContext): Promise<void> {
 	});
 
 	switch (ctx.status) {
-		case 'connecting':
+		case 'connecting': {
 			const now = Date.now();
 			const timeSinceLastConnectingEvent = now - lastConnectingEvent;
 
@@ -199,6 +199,7 @@ export async function handleConnection(ctx: ConnectionContext): Promise<void> {
 				botLogger.info("ℹ️ Connection timeout already active, not setting new one");
 			}
 			break;
+		}
 
 		case 'open': // Zaileys uses 'open' for successful connections, not 'connected'
 			botLogger.success("✅ Successfully connected to WhatsApp!");
