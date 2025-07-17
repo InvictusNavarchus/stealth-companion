@@ -3,7 +3,7 @@ import { loadMessages, saveMessages } from "../services/messageStorage.js";
 import { detectViewOnceContent, handleRepliedMessage } from "../handlers/viewOnceHandler.js";
 import { detectStoryContent, handleStory } from "../handlers/storyHandler.js";
 import { detectMediaContent, handleMediaMessageWrapper } from "../handlers/mediaHandler.js";
-import { MessageContext, ZaileysClient, StoredViewOnceMessage, ChatType } from "../../types/index.js";
+import { MessageContext, ZaileysClient, StoredViewOnceMessage, ChatType, SenderDevice } from "../../types/index.js";
 
 /**
  * Processes and stores a received message - only saves view once messages
@@ -29,18 +29,37 @@ export async function storeMessage(ctx: MessageContext): Promise<void> {
 			const messageData: StoredViewOnceMessage = {
 				// Main message metadata
 				chatId: ctx.chatId,
-				...(ctx.channelId && { channelId: ctx.channelId }),
-				...(ctx.uniqueId && { uniqueId: ctx.uniqueId }),
+				channelId: ctx.channelId,
+				uniqueId: ctx.uniqueId,
 				roomId: ctx.roomId,
 				roomName: ctx.roomName,
 				senderId: ctx.senderId,
 				senderName: ctx.senderName,
-				...(ctx.senderDevice && { senderDevice: ctx.senderDevice }),
+				senderDevice: ctx.senderDevice,
 				timestamp: ctx.timestamp,
-				...(ctx.text && { text: ctx.text }),
-				...(ctx.isFromMe !== undefined && { isFromMe: ctx.isFromMe }),
+				text: ctx.text,
+				isFromMe: ctx.isFromMe,
 				isGroup: ctx.isGroup,
 				chatType: ctx.chatType,
+
+				// All required fields from BaseStoredMessage
+				receiverId: ctx.receiverId,
+				receiverName: ctx.receiverName,
+				mentions: ctx.mentions,
+				links: ctx.links,
+				isPrefix: ctx.isPrefix,
+				isSpam: ctx.isSpam,
+				isTagMe: ctx.isTagMe,
+				isStory: ctx.isStory,
+				isViewOnce: ctx.isViewOnce,
+				isEdited: ctx.isEdited,
+				isDeleted: ctx.isDeleted,
+				isPinned: ctx.isPinned,
+				isUnPinned: ctx.isUnPinned,
+				isChannel: ctx.isChannel,
+				isBroadcast: ctx.isBroadcast,
+				isEphemeral: ctx.isEphemeral,
+				isForwarded: ctx.isForwarded,
 
 				// View once media info
 				viewOnceMediaPath: repliedData.viewOnceImagePath,
@@ -49,20 +68,38 @@ export async function storeMessage(ctx: MessageContext): Promise<void> {
 				// Replied message data (the view once content)
 				viewOnceMessage: ctx.replied ? {
 					chatId: ctx.replied.chatId,
-					...(ctx.replied.channelId && { channelId: ctx.replied.channelId }),
-					...(ctx.replied.uniqueId && { uniqueId: ctx.replied.uniqueId }),
+					channelId: ctx.replied.channelId,
+					uniqueId: ctx.replied.uniqueId,
 					roomId: ctx.replied.roomId,
 					roomName: ctx.replied.roomName,
 					senderId: ctx.replied.senderId,
 					senderName: ctx.replied.senderName,
-					...(ctx.replied.senderDevice && { senderDevice: ctx.replied.senderDevice }),
+					senderDevice: ctx.replied.senderDevice,
 					timestamp: ctx.replied.timestamp,
-					...(ctx.replied.text && { text: ctx.replied.text }),
-					...(ctx.replied.isFromMe !== undefined && { isFromMe: ctx.replied.isFromMe }),
+					text: ctx.replied.text,
+					isFromMe: ctx.replied.isFromMe,
 					isGroup: ctx.replied.isGroup,
 					chatType: ctx.replied.chatType,
-					...(ctx.replied.isViewOnce !== undefined && { isViewOnce: ctx.replied.isViewOnce }),
-					
+
+					// All required fields from BaseStoredMessage
+					receiverId: ctx.replied.receiverId,
+					receiverName: ctx.replied.receiverName,
+					mentions: ctx.replied.mentions,
+					links: ctx.replied.links,
+					isPrefix: ctx.replied.isPrefix,
+					isSpam: ctx.replied.isSpam,
+					isTagMe: ctx.replied.isTagMe,
+					isStory: ctx.replied.isStory,
+					isViewOnce: ctx.replied.isViewOnce,
+					isEdited: ctx.replied.isEdited,
+					isDeleted: ctx.replied.isDeleted,
+					isPinned: ctx.replied.isPinned,
+					isUnPinned: ctx.replied.isUnPinned,
+					isChannel: ctx.replied.isChannel,
+					isBroadcast: ctx.replied.isBroadcast,
+					isEphemeral: ctx.replied.isEphemeral,
+					isForwarded: ctx.replied.isForwarded,
+
 					// Media metadata
 					media: {
 						mimetype: ctx.replied.media?.mimetype || '',
@@ -72,14 +109,37 @@ export async function storeMessage(ctx: MessageContext): Promise<void> {
 						...(ctx.replied.media?.viewOnce !== undefined && { viewOnce: ctx.replied.media.viewOnce })
 					}
 				} : {
+					// Default values for all required fields
 					chatId: '',
+					channelId: '',
+					uniqueId: '',
 					roomId: '',
 					roomName: '',
 					senderId: '',
 					senderName: '',
+					senderDevice: 'unknown' as SenderDevice,
 					timestamp: 0,
+					text: null,
+					isFromMe: false,
 					isGroup: false,
 					chatType: 'text' as ChatType,
+					receiverId: '',
+					receiverName: '',
+					mentions: [],
+					links: [],
+					isPrefix: false,
+					isSpam: false,
+					isTagMe: false,
+					isStory: false,
+					isViewOnce: false,
+					isEdited: false,
+					isDeleted: false,
+					isPinned: false,
+					isUnPinned: false,
+					isChannel: false,
+					isBroadcast: false,
+					isEphemeral: false,
+					isForwarded: false,
 					media: { mimetype: '' }
 				},
 				
@@ -89,6 +149,7 @@ export async function storeMessage(ctx: MessageContext): Promise<void> {
 					roomName: ctx.roomName,
 					senderId: ctx.senderId,
 					senderName: ctx.senderName,
+					senderDevice: ctx.senderDevice,
 					isGroup: ctx.isGroup
 				}
 			};
