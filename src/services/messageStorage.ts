@@ -3,53 +3,98 @@ import { z } from "zod";
 import { botLogger } from "../../logger.js";
 import { AnyStoredMessage } from "../../types/index.js";
 
-// Zod schema for validating stored messages
+// Zod schema for validating stored messages - updated to match complete ChatType enum
 const ChatTypeSchema = z.enum([
-	'text', 'image', 'video', 'audio', 'voice', 'document', 'sticker',
-	'location', 'contact', 'viewOnce', 'story'
+	// Text Messages
+	'text',
+
+	// Media Messages
+	'image', 'video', 'audio', 'document', 'sticker', 'ptv',
+
+	// Interactive Messages
+	'contact', 'location', 'liveLocation', 'list', 'listResponse', 'buttons',
+	'buttonsResponse', 'interactive', 'interactiveResponse', 'template', 'templateButtonReply',
+
+	// Poll Messages
+	'pollCreation', 'pollUpdate',
+
+	// Special Messages
+	'reaction', 'viewOnce', 'ephemeral', 'protocol', 'groupInvite', 'product',
+	'order', 'invoice', 'event', 'comment', 'callLog',
+
+	// System Messages
+	'deviceSent', 'contactsArray', 'highlyStructured', 'sendPayment', 'requestPayment',
+	'declinePaymentRequest', 'cancelPaymentRequest', 'paymentInvite', 'keepInChat',
+	'requestPhoneNumber', 'groupMentioned', 'pinInChat', 'scheduledCallCreation',
+	'scheduledCallEdit', 'botInvoke', 'encComment', 'bcall', 'lottieSticker',
+	'placeholder', 'encEventUpdate'
 ]);
+
+const SenderDeviceSchema = z.enum(['unknown', 'android', 'ios', 'desktop', 'web']);
 
 const BaseStoredMessageSchema = z.object({
 	chatId: z.string(),
-	channelId: z.string().optional(),
-	uniqueId: z.string().optional(),
+	channelId: z.string(),
+	uniqueId: z.string(),
 	roomId: z.string(),
 	roomName: z.string(),
 	senderId: z.string(),
 	senderName: z.string(),
-	senderDevice: z.string().optional(),
+	senderDevice: SenderDeviceSchema,
 	timestamp: z.union([z.number(), z.string()]),
-	text: z.string().optional(),
-	isFromMe: z.boolean().optional(),
+	text: z.string().nullable(),
+	isFromMe: z.boolean(),
 	isGroup: z.boolean(),
 	chatType: ChatTypeSchema,
 	processedAt: z.string().optional(),
+
+	// Additional fields that may be useful for stored messages
+	receiverId: z.string().optional(),
+	receiverName: z.string().optional(),
+	mentions: z.array(z.string()).optional(),
+	links: z.array(z.string()).optional(),
+	isPrefix: z.boolean().optional(),
+	isSpam: z.boolean().optional(),
+	isTagMe: z.boolean().optional(),
+	isStory: z.boolean().optional(),
+	isViewOnce: z.boolean().optional(),
+	isEdited: z.boolean().optional(),
+	isDeleted: z.boolean().optional(),
+	isPinned: z.boolean().optional(),
+	isUnPinned: z.boolean().optional(),
+	isChannel: z.boolean().optional(),
+	isBroadcast: z.boolean().optional(),
+	isEphemeral: z.boolean().optional(),
+	isForwarded: z.boolean().optional(),
 });
 
 const MediaInfoSchema = z.object({
-	mimetype: z.string(),
-	caption: z.string().optional(),
-	height: z.number().optional(),
-	width: z.number().optional(),
+	mimetype: z.string().optional(),
+	fileSha256: z.instanceof(Buffer).optional(),
 	fileLength: z.number().optional(),
-	duration: z.number().optional(),
-	pages: z.number().optional(),
-	fileName: z.string().optional(),
-	viewOnce: z.boolean().optional(),
-}).passthrough(); // Allow additional properties like buffer() and stream()
+	seconds: z.number().optional(), // for audio/video
+	width: z.number().optional(), // for images/videos
+	height: z.number().optional(), // for images/videos
+	caption: z.string().optional(),
+}).passthrough(); // Allow additional properties like buffer() and stream() methods
 
 const StoredMessageSchema = BaseStoredMessageSchema.extend({
 	id: z.string(),
 	originalMessage: z.object({
 		chatId: z.string(),
+		channelId: z.string(),
+		uniqueId: z.string(),
 		roomId: z.string(),
 		roomName: z.string(),
 		senderId: z.string(),
 		senderName: z.string(),
+		senderDevice: SenderDeviceSchema,
 		isGroup: z.boolean(),
 		timestamp: z.number(),
 		chatType: ChatTypeSchema,
-		text: z.string().optional(),
+		text: z.string().nullable(),
+		receiverId: z.string().optional(),
+		receiverName: z.string().optional(),
 	}),
 	viewOnceData: z.object({
 		viewOnceImagePath: z.string(),
@@ -70,6 +115,7 @@ const StoredMessageSchema = BaseStoredMessageSchema.extend({
 		roomName: z.string(),
 		senderId: z.string(),
 		senderName: z.string(),
+		senderDevice: SenderDeviceSchema,
 		isGroup: z.boolean(),
 	}),
 });
@@ -85,6 +131,7 @@ const StoredMediaMessageSchema = BaseStoredMessageSchema.extend({
 		roomName: z.string(),
 		isGroup: z.boolean(),
 		senderName: z.string(),
+		senderDevice: SenderDeviceSchema,
 	}),
 });
 
@@ -99,6 +146,7 @@ const StoredViewOnceMessageSchema = BaseStoredMessageSchema.extend({
 		roomName: z.string(),
 		senderId: z.string(),
 		senderName: z.string(),
+		senderDevice: SenderDeviceSchema,
 		isGroup: z.boolean(),
 	}),
 });
