@@ -9,7 +9,7 @@ const ChatTypeSchema = z.enum([
 	'text',
 
 	// Media Messages
-	'image', 'video', 'audio', 'document', 'sticker', 'ptv',
+	'image', 'video', 'audio', 'voice', 'document', 'sticker', 'ptv',
 
 	// Interactive Messages
 	'contact', 'location', 'liveLocation', 'list', 'listResponse', 'buttons',
@@ -48,24 +48,24 @@ const BaseStoredMessageSchema = z.object({
 	chatType: ChatTypeSchema,
 	processedAt: z.string().optional(),
 
-	// Additional fields that may be useful for stored messages
-	receiverId: z.string().optional(),
-	receiverName: z.string().optional(),
-	mentions: z.array(z.string()).optional(),
-	links: z.array(z.string()).optional(),
-	isPrefix: z.boolean().optional(),
-	isSpam: z.boolean().optional(),
-	isTagMe: z.boolean().optional(),
-	isStory: z.boolean().optional(),
-	isViewOnce: z.boolean().optional(),
-	isEdited: z.boolean().optional(),
-	isDeleted: z.boolean().optional(),
-	isPinned: z.boolean().optional(),
-	isUnPinned: z.boolean().optional(),
-	isChannel: z.boolean().optional(),
-	isBroadcast: z.boolean().optional(),
-	isEphemeral: z.boolean().optional(),
-	isForwarded: z.boolean().optional(),
+	// Additional fields from MessageContext
+	receiverId: z.string(),
+	receiverName: z.string(),
+	mentions: z.array(z.string()),
+	links: z.array(z.string()),
+	isPrefix: z.boolean(),
+	isSpam: z.boolean(),
+	isTagMe: z.boolean(),
+	isStory: z.boolean(),
+	isViewOnce: z.boolean(),
+	isEdited: z.boolean(),
+	isDeleted: z.boolean(),
+	isPinned: z.boolean(),
+	isUnPinned: z.boolean(),
+	isChannel: z.boolean(),
+	isBroadcast: z.boolean(),
+	isEphemeral: z.boolean(),
+	isForwarded: z.boolean(),
 });
 
 const MediaInfoSchema = z.object({
@@ -76,6 +76,12 @@ const MediaInfoSchema = z.object({
 	width: z.number().optional(), // for images/videos
 	height: z.number().optional(), // for images/videos
 	caption: z.string().optional(),
+
+	// Additional properties available in the schema
+	duration: z.number().optional(), // alias for seconds
+	pages: z.number().optional(), // for documents
+	fileName: z.string().optional(), // for documents
+	viewOnce: z.boolean().optional(), // for view-once detection
 }).passthrough(); // Allow additional properties like buffer() and stream() methods
 
 const StoredMessageSchema = BaseStoredMessageSchema.extend({
@@ -93,8 +99,8 @@ const StoredMessageSchema = BaseStoredMessageSchema.extend({
 		timestamp: z.number(),
 		chatType: ChatTypeSchema,
 		text: z.string().nullable(),
-		receiverId: z.string().optional(),
-		receiverName: z.string().optional(),
+		receiverId: z.string(),
+		receiverName: z.string(),
 	}),
 	viewOnceData: z.object({
 		viewOnceImagePath: z.string(),

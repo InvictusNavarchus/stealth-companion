@@ -55,6 +55,11 @@ const MEDIA_CONFIG: Record<SupportedMediaType, MediaConfig> = {
 		enabled: true,
 		maxSize: mbToBytes(10),
 		formats: ['image/webp', 'image/png', 'image/jpeg']
+	},
+	ptv: {
+		enabled: true,
+		maxSize: mbToBytes(100),
+		formats: ['video/mp4', 'video/avi', 'video/mov', 'video/mkv']
 	}
 };
 
@@ -159,18 +164,37 @@ export async function storeMediaMessage(ctx: MessageContext): Promise<void> {
 			const mediaData: StoredMediaMessage = {
 				// Main message metadata
 				chatId: ctx.chatId,
-				...(ctx.channelId && { channelId: ctx.channelId }),
-				...(ctx.uniqueId && { uniqueId: ctx.uniqueId }),
+				channelId: ctx.channelId,
+				uniqueId: ctx.uniqueId,
 				roomId: ctx.roomId,
 				roomName: ctx.roomName,
 				senderId: ctx.senderId,
 				senderName: ctx.senderName,
-				...(ctx.senderDevice && { senderDevice: ctx.senderDevice }),
+				senderDevice: ctx.senderDevice,
 				timestamp: ctx.timestamp,
-				...(ctx.text && { text: ctx.text }),
-				...(ctx.isFromMe !== undefined && { isFromMe: ctx.isFromMe }),
+				text: ctx.text,
+				isFromMe: ctx.isFromMe,
 				isGroup: ctx.isGroup,
-				
+
+				// All required fields from BaseStoredMessage
+				receiverId: ctx.receiverId,
+				receiverName: ctx.receiverName,
+				mentions: ctx.mentions,
+				links: ctx.links,
+				isPrefix: ctx.isPrefix,
+				isSpam: ctx.isSpam,
+				isTagMe: ctx.isTagMe,
+				isStory: ctx.isStory,
+				isViewOnce: ctx.isViewOnce,
+				isEdited: ctx.isEdited,
+				isDeleted: ctx.isDeleted,
+				isPinned: ctx.isPinned,
+				isUnPinned: ctx.isUnPinned,
+				isChannel: ctx.isChannel,
+				isBroadcast: ctx.isBroadcast,
+				isEphemeral: ctx.isEphemeral,
+				isForwarded: ctx.isForwarded,
+
 				// Media specific data
 				chatType: ctx.chatType,
 				hasMedia: true,
@@ -199,7 +223,8 @@ export async function storeMediaMessage(ctx: MessageContext): Promise<void> {
 					roomId: ctx.roomId,
 					roomName: ctx.roomName,
 					isGroup: ctx.isGroup,
-					senderName: ctx.senderName
+					senderName: ctx.senderName,
+					senderDevice: ctx.senderDevice
 				}
 			};
 			

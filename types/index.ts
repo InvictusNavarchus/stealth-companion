@@ -37,6 +37,7 @@ export type ChatType =
   | 'image'
   | 'video'
   | 'audio'
+  | 'voice' // voice messages
   | 'document'
   | 'sticker'
   | 'ptv'
@@ -114,15 +115,21 @@ export interface MediaInfo {
   width?: number; // for images/videos
   height?: number; // for images/videos
   caption?: string;
-  // ... other media-specific properties can be added as needed
 
-  // Methods to access media content
-  buffer(): Promise<Buffer>;
-  stream(): Promise<Readable>;
+  // Additional properties available in the schema
+  duration?: number; // alias for seconds
+  pages?: number; // for documents
+  fileName?: string; // for documents
+  viewOnce?: boolean; // for view-once detection
+
+  // Methods to access media content (optional for stored messages)
+  buffer?(): Promise<Buffer>;
+  stream?(): Promise<Readable>;
 }
 
 /**
  * Complete MessageContext interface matching Zaileys library schema
+ * This matches the actual ctx object that Zaileys provides
  */
 export interface MessageContext {
   // Core Identifiers
@@ -196,7 +203,7 @@ export type ConnectionStatus =
 // ============================================================================
 
 /**
- * Base interface for stored messages, updated to match new MessageContext schema
+ * Base interface for stored messages, matching the actual MessageContext schema
  */
 export interface BaseStoredMessage {
   chatId: string;
@@ -214,24 +221,24 @@ export interface BaseStoredMessage {
   chatType: ChatType;
   processedAt?: string;
 
-  // Additional fields that may be useful for stored messages
-  receiverId?: string;
-  receiverName?: string;
-  mentions?: string[];
-  links?: string[];
-  isPrefix?: boolean;
-  isSpam?: boolean;
-  isTagMe?: boolean;
-  isStory?: boolean;
-  isViewOnce?: boolean;
-  isEdited?: boolean;
-  isDeleted?: boolean;
-  isPinned?: boolean;
-  isUnPinned?: boolean;
-  isChannel?: boolean;
-  isBroadcast?: boolean;
-  isEphemeral?: boolean;
-  isForwarded?: boolean;
+  // Additional fields from MessageContext that may be useful for stored messages
+  receiverId: string;
+  receiverName: string;
+  mentions: string[];
+  links: string[];
+  isPrefix: boolean;
+  isSpam: boolean;
+  isTagMe: boolean;
+  isStory: boolean;
+  isViewOnce: boolean;
+  isEdited: boolean;
+  isDeleted: boolean;
+  isPinned: boolean;
+  isUnPinned: boolean;
+  isChannel: boolean;
+  isBroadcast: boolean;
+  isEphemeral: boolean;
+  isForwarded: boolean;
 }
 
 export interface StoredMessage extends BaseStoredMessage {
@@ -536,7 +543,7 @@ export type AnyStoredMessage = StoredMessage | StoredMediaMessage | StoredViewOn
 // UTILITY TYPES
 // ============================================================================
 
-export type SupportedMediaType = Extract<ChatType, 'image' | 'video' | 'document' | 'audio' | 'sticker' | 'ptv'>;
+export type SupportedMediaType = Extract<ChatType, 'image' | 'video' | 'document' | 'audio' | 'voice' | 'sticker' | 'ptv'>;
 
 export interface FileExtensionMap {
   [key: string]: string;
