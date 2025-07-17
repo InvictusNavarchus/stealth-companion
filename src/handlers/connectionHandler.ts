@@ -158,7 +158,7 @@ async function performReconnection(): Promise<void> {
 }
 
 /**
- * Alternative function name that delegates to scheduleReconnection
+ * Schedules a reconnection attempt with exponential backoff
  * @returns {Promise<void>}
  */
 export async function attemptReconnection(): Promise<void> {
@@ -225,9 +225,7 @@ export async function handleConnection(ctx: ConnectionContext): Promise<void> {
 			}
 			break;
 
-		// Handle alternative status names
 		case 'connected':
-			// Treat same as 'open'
 			botLogger.success("✅ Successfully connected to WhatsApp!");
 			clearConnectionTimeout();
 			clearReconnectionTimeout();
@@ -237,7 +235,6 @@ export async function handleConnection(ctx: ConnectionContext): Promise<void> {
 			break;
 
 		case 'disconnected':
-			// Treat same as 'close'
 			botLogger.warning("⚠️ WhatsApp connection closed");
 			isConnected = false;
 			clearConnectionTimeout();
