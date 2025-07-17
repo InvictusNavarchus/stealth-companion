@@ -158,14 +158,6 @@ async function performReconnection(): Promise<void> {
 }
 
 /**
- * Schedules a reconnection attempt with exponential backoff
- * @returns {Promise<void>}
- */
-export async function attemptReconnection(): Promise<void> {
-	scheduleReconnection();
-}
-
-/**
  * Handles connection status changes with robust monitoring
  * @param {Object} ctx - The connection context from Zaileys
  */
