@@ -95,7 +95,7 @@ export async function handleRepliedMessage(ctx: MessageContext): Promise<ViewOnc
 						const viewOnceData: ViewOnceData = {
 							viewOnceImagePath: viewOncePath,
 							viewOnceMediaType: mediaType,
-							originalMimetype: ctx.replied.media.mimetype,
+							originalMimetype: ctx.replied.media.mimetype || '',
 							...(ctx.replied.media.caption && { originalCaption: ctx.replied.media.caption }),
 							mediaMetadata: {
 								...(ctx.replied.media.height && { height: ctx.replied.media.height }),

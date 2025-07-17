@@ -1,9 +1,11 @@
 /**
  * TypeScript type definitions for Stealth Companion WhatsApp Bot
  * Comprehensive type definitions for all interfaces and data structures
+ * Updated to match the accurate Zaileys library context schema
  */
 
 import winston from 'winston';
+import { Readable } from 'stream';
 
 // ============================================================================
 // ZAILEYS CLIENT TYPES
@@ -16,57 +18,166 @@ export interface ZaileysClient {
 }
 
 // ============================================================================
+// ENUMS
+// ============================================================================
+
+/**
+ * Device type of the message sender
+ */
+export type SenderDevice = "unknown" | "android" | "ios" | "desktop" | "web";
+
+/**
+ * Complete ChatType enum matching Zaileys library schema
+ */
+export type ChatType =
+  // Text Messages
+  | 'text'
+
+  // Media Messages
+  | 'image'
+  | 'video'
+  | 'audio'
+  | 'voice' // voice messages
+  | 'document'
+  | 'sticker'
+  | 'ptv'
+
+  // Interactive Messages
+  | 'contact'
+  | 'location'
+  | 'liveLocation'
+  | 'list'
+  | 'listResponse'
+  | 'buttons'
+  | 'buttonsResponse'
+  | 'interactive'
+  | 'interactiveResponse'
+  | 'template'
+  | 'templateButtonReply'
+
+  // Poll Messages
+  | 'pollCreation'
+  | 'pollUpdate'
+
+  // Special Messages
+  | 'reaction'
+  | 'viewOnce'
+  | 'ephemeral'
+  | 'protocol'
+  | 'groupInvite'
+  | 'product'
+  | 'order'
+  | 'invoice'
+  | 'event'
+  | 'comment'
+  | 'callLog'
+
+  // System Messages
+  | 'deviceSent'
+  | 'contactsArray'
+  | 'highlyStructured'
+  | 'sendPayment'
+  | 'requestPayment'
+  | 'declinePaymentRequest'
+  | 'cancelPaymentRequest'
+  | 'paymentInvite'
+  | 'keepInChat'
+  | 'requestPhoneNumber'
+  | 'groupMentioned'
+  | 'pinInChat'
+  | 'scheduledCallCreation'
+  | 'scheduledCallEdit'
+  | 'botInvoke'
+  | 'encComment'
+  | 'bcall'
+  | 'lottieSticker'
+  | 'placeholder'
+  | 'encEventUpdate';
+
+// ============================================================================
 // MESSAGE CONTEXT TYPES
 // ============================================================================
 
+/**
+ * Citation object containing dynamic boolean flags based on client configuration
+ */
+export type Citation = Record<string, boolean> | null;
+
+/**
+ * Enhanced MediaInfo interface matching Zaileys library schema
+ */
 export interface MediaInfo {
-  mimetype: string;
-  caption?: string;
-  height?: number;
-  width?: number;
+  // Media metadata (varies by type)
+  mimetype?: string;
+  fileSha256?: Buffer;
   fileLength?: number;
-  duration?: number; // For audio/video
-  pages?: number; // For documents
-  fileName?: string; // For documents
-  viewOnce?: boolean;
-  buffer?(): Promise<Buffer>; // For downloading media as buffer
-  stream?(): Promise<NodeJS.ReadableStream>; // For downloading media as stream
+  seconds?: number; // for audio/video
+  width?: number; // for images/videos
+  height?: number; // for images/videos
+  caption?: string;
+
+  // Additional properties available in the schema
+  duration?: number; // alias for seconds
+  pages?: number; // for documents
+  fileName?: string; // for documents
+  viewOnce?: boolean; // for view-once detection
+
+  // Methods to access media content (optional for stored messages)
+  buffer?(): Promise<Buffer>;
+  stream?(): Promise<Readable>;
 }
 
+/**
+ * Complete MessageContext interface matching Zaileys library schema
+ * This matches the actual ctx object that Zaileys provides
+ */
 export interface MessageContext {
+  // Core Identifiers
   chatId: string;
-  channelId?: string;
-  uniqueId?: string;
+  channelId: string;
+  uniqueId: string;
+
+  // Participant Information
+  receiverId: string;
+  receiverName: string;
   roomId: string;
   roomName: string;
   senderId: string;
   senderName: string;
-  senderDevice?: string;
+  senderDevice: SenderDevice;
+
+  // Message Content
+  chatType: ChatType;
+  timestamp: number;
+  text: string | null;
+  mentions: string[];
+  links: string[];
+
+  // Boolean Flags
+  isPrefix: boolean;
+  isSpam: boolean;
+  isFromMe: boolean;
+  isTagMe: boolean;
   isGroup: boolean;
   isStory: boolean;
+  isViewOnce: boolean;
   isEdited: boolean;
   isDeleted: boolean;
-  isViewOnce?: boolean;
-  isFromMe?: boolean;
-  chatType: ChatType;
-  text?: string;
-  timestamp: number;
-  media?: MediaInfo;
-  replied?: MessageContext;
-}
+  isPinned: boolean;
+  isUnPinned: boolean;
+  isChannel: boolean;
+  isBroadcast: boolean;
+  isEphemeral: boolean;
+  isForwarded: boolean;
 
-export type ChatType = 
-  | 'text' 
-  | 'image' 
-  | 'video' 
-  | 'audio' 
-  | 'voice' 
-  | 'document' 
-  | 'sticker' 
-  | 'location' 
-  | 'contact' 
-  | 'viewOnce'
-  | 'story';
+  // Special Objects
+  citation: Citation;
+  media: MediaInfo | null;
+  replied: MessageContext | null;
+
+  // Message Function
+  message(): any; // proto.IWebMessageInfo - will be properly typed when Baileys types are imported
+}
 
 // ============================================================================
 // CONNECTION CONTEXT TYPES
@@ -91,35 +202,62 @@ export type ConnectionStatus =
 // STORED MESSAGE TYPES
 // ============================================================================
 
+/**
+ * Base interface for stored messages, matching the actual MessageContext schema
+ */
 export interface BaseStoredMessage {
   chatId: string;
-  channelId?: string;
-  uniqueId?: string;
+  channelId: string;
+  uniqueId: string;
   roomId: string;
   roomName: string;
   senderId: string;
   senderName: string;
-  senderDevice?: string;
+  senderDevice: SenderDevice;
   timestamp: number | string;
-  text?: string;
-  isFromMe?: boolean;
+  text: string | null;
+  isFromMe: boolean;
   isGroup: boolean;
   chatType: ChatType;
   processedAt?: string;
+
+  // Additional fields from MessageContext that may be useful for stored messages
+  receiverId: string;
+  receiverName: string;
+  mentions: string[];
+  links: string[];
+  isPrefix: boolean;
+  isSpam: boolean;
+  isTagMe: boolean;
+  isStory: boolean;
+  isViewOnce: boolean;
+  isEdited: boolean;
+  isDeleted: boolean;
+  isPinned: boolean;
+  isUnPinned: boolean;
+  isChannel: boolean;
+  isBroadcast: boolean;
+  isEphemeral: boolean;
+  isForwarded: boolean;
 }
 
 export interface StoredMessage extends BaseStoredMessage {
   id: string;
   originalMessage: {
     chatId: string;
+    channelId: string;
+    uniqueId: string;
     roomId: string;
     roomName: string;
     senderId: string;
     senderName: string;
+    senderDevice: SenderDevice;
     isGroup: boolean;
     timestamp: number;
     chatType: ChatType;
-    text?: string;
+    text: string | null;
+    receiverId?: string;
+    receiverName?: string;
   };
   viewOnceData: ViewOnceData;
   replyContext: ReplyContext;
@@ -138,6 +276,7 @@ export interface ReplyContext {
   roomName: string;
   senderId: string;
   senderName: string;
+  senderDevice: SenderDevice;
   isGroup: boolean;
 }
 
@@ -145,7 +284,7 @@ export interface MediaMetadata {
   height?: number;
   width?: number;
   fileLength?: number;
-  duration?: number;
+  duration?: number; // renamed from seconds for consistency
   pages?: number;
   fileName?: string;
 }
@@ -161,14 +300,19 @@ export interface MediaMessage {
   timestamp: number;
   originalMessage: {
     chatId: string;
+    channelId: string;
+    uniqueId: string;
     roomId: string;
     roomName: string;
     senderId: string;
     senderName: string;
+    senderDevice: SenderDevice;
     isGroup: boolean;
     timestamp: number;
     chatType: ChatType;
-    text?: string;
+    text: string | null;
+    receiverId?: string;
+    receiverName?: string;
   };
   media: MediaInfo;
   processedAt: string;
@@ -182,6 +326,7 @@ export interface RoomContext {
   roomName: string;
   isGroup: boolean;
   senderName: string;
+  senderDevice: SenderDevice;
 }
 
 // ============================================================================
@@ -398,7 +543,7 @@ export type AnyStoredMessage = StoredMessage | StoredMediaMessage | StoredViewOn
 // UTILITY TYPES
 // ============================================================================
 
-export type SupportedMediaType = Extract<ChatType, 'image' | 'video' | 'document' | 'audio' | 'voice' | 'sticker'>;
+export type SupportedMediaType = Extract<ChatType, 'image' | 'video' | 'document' | 'audio' | 'voice' | 'sticker' | 'ptv'>;
 
 export interface FileExtensionMap {
   [key: string]: string;

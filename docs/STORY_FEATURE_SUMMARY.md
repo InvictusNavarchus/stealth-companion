@@ -39,7 +39,7 @@
 ### **Message Storage Integration**
 - Stories are saved to the same `messages.json` file
 - Story data includes all standard message metadata plus story-specific fields
-- Maintains backward compatibility with existing message structure
+- Uses consistent message structure with other message types
 
 ### **Logging Integration**
 - Uses existing `botLogger` methods

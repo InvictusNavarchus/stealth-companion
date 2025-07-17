@@ -82,26 +82,45 @@ export async function storeStory(ctx: MessageContext): Promise<void> {
 		const storyData: StoredStoryMessage = {
 			// Basic message properties
 			chatId: ctx.chatId,
-			...(ctx.channelId && { channelId: ctx.channelId }),
-			...(ctx.uniqueId && { uniqueId: ctx.uniqueId }),
+			channelId: ctx.channelId,
+			uniqueId: ctx.uniqueId,
 			roomId: ctx.roomId,
 			roomName: ctx.roomName,
 			senderId: ctx.senderId,
 			senderName: ctx.senderName,
-			...(ctx.senderDevice && { senderDevice: ctx.senderDevice }),
+			senderDevice: ctx.senderDevice,
 			timestamp: ctx.timestamp,
-			...(ctx.text && { text: ctx.text }),
-			...(ctx.isFromMe !== undefined && { isFromMe: ctx.isFromMe }),
+			text: ctx.text,
+			isFromMe: ctx.isFromMe,
 			isGroup: ctx.isGroup,
 			chatType: ctx.chatType,
-			
+
+			// All required fields from BaseStoredMessage
+			receiverId: ctx.receiverId,
+			receiverName: ctx.receiverName,
+			mentions: ctx.mentions,
+			links: ctx.links,
+			isPrefix: ctx.isPrefix,
+			isSpam: ctx.isSpam,
+			isTagMe: ctx.isTagMe,
+			isStory: ctx.isStory,
+			isViewOnce: ctx.isViewOnce,
+			isEdited: ctx.isEdited,
+			isDeleted: ctx.isDeleted,
+			isPinned: ctx.isPinned,
+			isUnPinned: ctx.isUnPinned,
+			isChannel: ctx.isChannel,
+			isBroadcast: ctx.isBroadcast,
+			isEphemeral: ctx.isEphemeral,
+			isForwarded: ctx.isForwarded,
+
 			// Processing metadata
 			processedAt: new Date().toISOString(),
-			
+
 			// Add media path if successfully saved
 			storyMediaPath,
 			mediaType: ctx.chatType,
-			
+
 			// Story specific data
 			storyData: {
 				isStory: true,

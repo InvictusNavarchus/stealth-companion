@@ -158,14 +158,6 @@ async function performReconnection(): Promise<void> {
 }
 
 /**
- * Legacy function for backward compatibility - now delegates to scheduleReconnection
- * @returns {Promise<void>}
- */
-export async function attemptReconnection(): Promise<void> {
-	scheduleReconnection();
-}
-
-/**
  * Handles connection status changes with robust monitoring
  * @param {Object} ctx - The connection context from Zaileys
  */
@@ -225,9 +217,7 @@ export async function handleConnection(ctx: ConnectionContext): Promise<void> {
 			}
 			break;
 
-		// Handle legacy status names for backward compatibility
 		case 'connected':
-			// Treat same as 'open'
 			botLogger.success("✅ Successfully connected to WhatsApp!");
 			clearConnectionTimeout();
 			clearReconnectionTimeout();
@@ -237,7 +227,6 @@ export async function handleConnection(ctx: ConnectionContext): Promise<void> {
 			break;
 
 		case 'disconnected':
-			// Treat same as 'close'
 			botLogger.warning("⚠️ WhatsApp connection closed");
 			isConnected = false;
 			clearConnectionTimeout();

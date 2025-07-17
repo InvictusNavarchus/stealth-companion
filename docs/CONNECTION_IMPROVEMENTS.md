@@ -53,7 +53,7 @@ const MIN_CONNECTION_INTERVAL = 5000; // 5 seconds
 ### 3. **Proper Status Handling**
 - Added support for Zaileys' actual status values: 'open' and 'close'
 - Updated TypeScript types to include correct status values
-- Maintained backward compatibility with legacy status names
+- Handles all possible connection status values from the library
 
 ### 4. **Separated Timeout Management**
 ```typescript
@@ -102,7 +102,7 @@ let lastConnectingEvent: number = 0;
 - Properly handles 'open' and 'close' status from Zaileys
 - Updates connection state variables
 - Prevents duplicate operations
-- Maintains backward compatibility
+- Handles all connection status values from the library
 
 ## 📊 Expected Improvements
 
