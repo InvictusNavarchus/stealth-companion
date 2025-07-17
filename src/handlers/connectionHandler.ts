@@ -158,7 +158,7 @@ async function performReconnection(): Promise<void> {
 }
 
 /**
- * Legacy function for backward compatibility - now delegates to scheduleReconnection
+ * Alternative function name that delegates to scheduleReconnection
  * @returns {Promise<void>}
  */
 export async function attemptReconnection(): Promise<void> {
@@ -225,7 +225,7 @@ export async function handleConnection(ctx: ConnectionContext): Promise<void> {
 			}
 			break;
 
-		// Handle legacy status names for backward compatibility
+		// Handle alternative status names
 		case 'connected':
 			// Treat same as 'open'
 			botLogger.success("✅ Successfully connected to WhatsApp!");
