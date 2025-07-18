@@ -26,10 +26,10 @@ CLIENT_AUTH_TYPE=qr
 CLIENT_PREFIX=/
 CLIENT_IGNORE_ME=false
 CLIENT_SHOW_LOGS=true
-CLIENT_AUTO_READ=true
-CLIENT_AUTO_ONLINE=true
+CLIENT_AUTO_READ=false
+CLIENT_AUTO_ONLINE=false
 CLIENT_AUTO_PRESENCE=true
-CLIENT_AUTO_REJECT_CALL=true
+CLIENT_AUTO_REJECT_CALL=false
 CLIENT_LOAD_LLM_SCHEMAS=false
 
 # Database settings
@@ -59,10 +59,10 @@ node index.js
 | `CLIENT_PREFIX` | `/` | Command prefix for bot commands |
 | `CLIENT_IGNORE_ME` | `false` | Ignore messages sent by the bot itself |
 | `CLIENT_SHOW_LOGS` | `true` | Show initialization logs and spinners |
-| `CLIENT_AUTO_READ` | `true` | Automatically mark messages as read |
-| `CLIENT_AUTO_ONLINE` | `true` | Set online presence on connection |
+| `CLIENT_AUTO_READ` | `false` | Automatically mark messages as read |
+| `CLIENT_AUTO_ONLINE` | `false` | Set online presence on connection |
 | `CLIENT_AUTO_PRESENCE` | `true` | Send typing/recording indicators |
-| `CLIENT_AUTO_REJECT_CALL` | `true` | Automatically reject incoming calls |
+| `CLIENT_AUTO_REJECT_CALL` | `false` | Automatically reject incoming calls |
 | `CLIENT_LOAD_LLM_SCHEMAS` | `false` | Enable LLM/AI features |
 | `DATABASE_TYPE` | `sqlite` | Database type (sqlite, postgresql, mysql) |
 | `DATABASE_URL` | `./session/zaileys.db` | Database connection string |
